@@ -1,0 +1,2027 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BRAUFONET — Brazil UFO Network</title>
+<meta name="theme-color" content="#020408">
+<meta name="description" content="BRAUFONET – Brazil UFO Network: ufologia, ciência e espiritualidade desde 2018.">
+
+<!-- Decide antes da 1ª pintura se a intro roda (ver intro-demo.html) -->
+<script>
+(function () {
+  var html = document.documentElement, skip = false;
+  try { skip = sessionStorage.getItem('bn-intro-vista') === '1'; } catch (e) {}
+  if (/[?&]nointro\b/.test(location.search)) skip = true;
+  if (/[?&]intro\b/.test(location.search)) skip = false;
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { skip = true; html.classList.add('mov-reduzido'); }
+  var c = navigator.connection;
+  if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) skip = true;
+  if (!skip) html.classList.add('has-intro');
+})();
+</script>
+
+<link rel="preload" href="assets/fontes/cinzel-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+<style>
+/* =========================================================
+   TOKENS
+   ========================================================= */
+:root{
+  color-scheme: dark;
+  --void:#020408; --space:#06111e; --space-2:#0b1729; --space-3:#142943;
+  --gold:#f4cb70; --gold-2:#efbd61; --gold-deep:#cf8b1a;
+  --blue:#53b9ff; --blue-2:#63d7ff; --ice:#eaf1fa; --steel:#a8b8ca;
+  --ink:#121a24;
+  --f-serif:'Instrument Serif', Georgia, serif;
+  --f-sans:'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --f-mono:'IBM Plex Mono', Consolas, monospace;
+  --panel-space: 128px;           /* espaço reservado ao painel inferior */
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--void);color:var(--ice);font:16px/1.55 var(--f-sans);overflow:hidden}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* =========================================================
+   INTRO (mesma lógica do intro-demo.html)
+   ========================================================= */
+.intro{display:none}
+.has-intro .intro{display:block;position:fixed;inset:0;z-index:100;background:#020408}
+.intro__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.intro__white{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.intro.is-white .intro__white{opacity:1;transition:opacity .25s linear}
+.intro.is-leaving{opacity:0;transition:opacity var(--intro-fade,1.4s) cubic-bezier(.4,0,.2,1)}
+.intro__skip{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));min-height:44px;padding:0 18px;border-radius:999px;font:500 12px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:rgba(234,241,250,.85);background:rgba(2,4,8,.35);border:1px solid rgba(234,241,250,.25);cursor:pointer;opacity:0;transition:opacity .4s}
+.intro.can-skip .intro__skip{opacity:1}
+.intro.is-white .intro__skip{opacity:0;pointer-events:none}
+
+/* =========================================================
+   UNIVERSO 3×3 + CÂMERA
+   ========================================================= */
+.viewport{position:fixed;inset:0;overflow:hidden;overflow:clip}
+.world{
+  position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;
+  background:#020408 url(assets/universo-5760.webp) center/cover no-repeat;
+}
+@media (max-width:900px){ .world{background-image:url(assets/universo-2880.webp)} }
+
+.region{position:absolute;display:grid;padding:clamp(28px,7vh,80px) clamp(20px,7vw,110px) calc(var(--panel-space) + 12px)}
+.region .fade{opacity:0;transform:translateY(12px);transition:opacity .45s ease-out,transform .6s cubic-bezier(.16,1,.3,1)}
+.region.is-active .fade{opacity:1;transform:none}
+.world.em-voo .fade,.world.em-mapa .fade{opacity:0!important;transition-duration:.18s}
+.region__texto{position:relative;isolation:isolate}
+
+/* ---------- TÚNEL: ao chegar, o centro do setor vira espaço profundo ---------- */
+.region__inner{position:relative;z-index:1}
+.esmaecer{
+  position:absolute;z-index:0;pointer-events:none;opacity:0;
+  inset:max(var(--m),4rem) var(--m) calc(var(--panel-space) - 34px) var(--m);   /* topo abaixo do HUD; a base assenta sobre o console */
+  border-radius:var(--raio);
+  /* o fundo vira quase preto: contraste alto apaga as estrelas fracas, só as mais brilhantes resistem */
+  -webkit-backdrop-filter:contrast(var(--c)) brightness(var(--b)) saturate(.6);
+  backdrop-filter:contrast(var(--c)) brightness(var(--b)) saturate(.6);
+  /* túnel: mais escuro no centro, um pouco menos perto da moldura */
+  background:radial-gradient(ellipse 75% 70% at 50% 48%,rgba(0,0,0,var(--t)) 0%,rgba(0,0,0,calc(var(--t) * .55)) 60%,rgba(0,0,0,calc(var(--t) * .15)) 100%);
+  box-shadow:inset 0 0 0 1px var(--linha),inset 0 0 calc(var(--m) * 4) rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.35),0 0 40px rgba(0,0,0,.35);
+}
+@supports not ((backdrop-filter:contrast(2)) or (-webkit-backdrop-filter:contrast(2))){ .esmaecer{background:rgba(1,2,5,.92)} }
+.region.esmaecida .esmaecer{opacity:1;transition:opacity var(--td) cubic-bezier(.3,0,.2,1)}
+.region.limpando .esmaecer{opacity:0;transition:opacity .6s ease-out}
+/* o conteúdo (textos) só entra quando o escuro está quase completo — sem pausa */
+.region.is-active .fade{transition-delay:calc(var(--td) * .7)}
+.region.is-active .planeta__nome.fade{transition-delay:calc(var(--td) * .85)}
+body{--m:clamp(14px,4.2vmin,48px);--raio:18px;--linha:rgba(244,203,112,.38);--c:3.2;--b:.62;--t:.6;--td:.8s}
+@media (max-width:760px){ body{--m:10px;--raio:14px} }
+.region__texto::before{content:'';position:absolute;inset:-30% -25%;z-index:-1;background:radial-gradient(closest-side,rgba(2,4,8,.62),rgba(2,4,8,0));pointer-events:none}
+
+/* Layout das regiões: texto + órbita, lado alterna conforme a coluna */
+.region__inner{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:center;gap:clamp(16px,4vw,64px);height:100%}
+.region[data-col="2"] .region__inner{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)}
+.region[data-col="2"] .region__texto{order:2}
+.region[data-col="1"] .region__inner{grid-template-columns:1fr;grid-template-rows:auto 1fr;justify-items:center;text-align:center}
+.region__texto{max-width:30em}
+.codigo{font:500 12px/1 var(--f-mono);letter-spacing:.22em;color:var(--gold);text-transform:uppercase;display:flex;gap:.9em;align-items:center}
+.codigo::before{content:'';width:28px;height:1px;background:currentColor;opacity:.7}
+.region[data-col="1"] .codigo{justify-content:center}
+.region h2{font:400 clamp(40px,6.4vw,92px)/.95 var(--f-serif);margin:.32em 0 .28em;letter-spacing:-.01em;text-shadow:0 2px 30px rgba(0,0,0,.6)}
+.region h2:focus{outline:none}
+.region p.desc{margin:0;color:#c9d6e4;font-size:clamp(15px,1.25vw,18px);text-shadow:0 1px 12px #000}
+
+/* Órbita de planetas */
+.orbita{position:relative;width:100%;height:min(46vh,420px);min-height:240px}
+.region[data-col="1"] .orbita{width:min(760px,90%);height:min(34vh,300px)}
+.orbita svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.orbita ellipse{fill:none;stroke:rgba(244,203,112,.28);stroke-width:1;stroke-dasharray:2 7}
+.planeta{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;background:none;border:0;padding:6px;cursor:pointer;border-radius:16px}
+.planeta__esfera{
+  width:var(--s,72px);aspect-ratio:1;border-radius:50%;position:relative;
+  background:radial-gradient(circle at 32% 28%,var(--c1) 0%,var(--c2) 42%,#03060c 100%);
+  box-shadow:inset -10px -14px 26px rgba(0,0,0,.65),inset 4px 4px 10px rgba(255,255,255,.12),0 0 28px var(--glow);
+  transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .4s;
+  animation:flutua var(--fd,7s) ease-in-out infinite alternate;
+}
+.planeta[data-anel] .planeta__esfera::after{content:'';position:absolute;left:-26%;right:-26%;top:42%;height:18%;border-radius:50%;border:2px solid var(--c1);opacity:.55;transform:rotate(-14deg)}
+.planeta__nome{font:500 12px/1.2 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ice);text-shadow:0 1px 8px #000;white-space:nowrap}
+.planeta:hover .planeta__esfera,.planeta:focus-visible .planeta__esfera{transform:scale(1.12);box-shadow:inset -10px -14px 26px rgba(0,0,0,.6),inset 4px 4px 10px rgba(255,255,255,.18),0 0 46px var(--glow)}
+.planeta:hover .planeta__nome{color:var(--gold)}
+@keyframes flutua{from{translate:0 -3px}to{translate:0 4px}}
+
+/* Paletas dos planetas */
+.p-azul {--c1:#bfe9ff;--c2:#1477df;--glow:rgba(83,185,255,.45)}
+.p-ouro {--c1:#fff0c4;--c2:#cf8b1a;--glow:rgba(244,203,112,.45)}
+.p-gelo {--c1:#ffffff;--c2:#7f97b0;--glow:rgba(200,220,240,.35)}
+.p-ambar{--c1:#ffd9a6;--c2:#b4561d;--glow:rgba(255,160,90,.38)}
+.p-mar  {--c1:#b9fff0;--c2:#0f7d8c;--glow:rgba(90,220,220,.35)}
+
+/* =========================================================
+   HERO (setor central) — logo em camadas
+   ========================================================= */
+.region--hero .region__inner{display:grid;place-items:center;grid-template-columns:1fr}
+.logo{position:relative;width:min(calc(100vh - var(--panel-space) - 90px),86vw,760px);aspect-ratio:1}
+.camada{position:absolute;inset:0;will-change:transform}
+.camada img{width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none}
+.logo.pre .camada img{opacity:0}
+.hero-legenda{position:absolute;left:0;right:0;text-align:center;bottom:calc(var(--panel-space) - 6px);font:500 11px/1 var(--f-mono);letter-spacing:.32em;text-transform:uppercase;color:rgba(234,241,250,.7);white-space:nowrap}
+
+/* =========================================================
+   HUD superior
+   ========================================================= */
+.hud{position:fixed;left:max(18px,env(safe-area-inset-left));top:max(16px,env(safe-area-inset-top));z-index:20;font:500 11px/1.5 var(--f-mono);letter-spacing:.18em;text-transform:uppercase;color:rgba(234,241,250,.75);pointer-events:none}
+.hud b{color:var(--gold);font-weight:500}
+.hud .coord{opacity:.6}
+
+/* =========================================================
+   PAINEL DE CONTROLE (base portada do catálogo "Comandos de bordo")
+   ========================================================= */
+.painel{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(1120px,94vw);height:var(--panel-space);z-index:25;pointer-events:none}
+.rack{position:absolute;bottom:0;left:0;right:0;height:45px;background:linear-gradient(#56616c,#252c34 12%,#0d141d 85%);border-top:2px solid #b59a64;border-radius:32px 32px 0 0;box-shadow:0 -7px 25px #0009;display:flex;align-items:center;justify-content:center;padding:0 12px;pointer-events:auto}
+.rack::before,.rack::after{content:'⊕';position:absolute;bottom:8px;color:#8c98a6;font:13px Consolas,monospace}
+.rack::before{left:16px}.rack::after{right:16px}
+.commands{display:flex;gap:12px;justify-content:center;align-items:center;transform:translateY(-23px)}
+.command{--accent:var(--blue-2);position:relative;min-width:100px;min-height:48px;padding:12px 18px;border:1px solid #7c8e9e;border-radius:7px;background:linear-gradient(#455263,#141f2f 50%,#070e19);box-shadow:inset 0 1px #fff6,0 5px 0 #03070d,0 7px 12px #000b;color:#f1f5fa;font:600 12px/1.1 'Segoe UI',var(--f-sans);cursor:pointer;transition:filter .15s,transform .15s;white-space:nowrap}
+.command:hover{filter:brightness(1.25)}
+.command:active{transform:translateY(3px)}
+.command[aria-current="true"],.command[aria-pressed="true"]{--accent:var(--gold);color:var(--gold)}
+.command .ico{display:inline-block;margin-right:8px;color:var(--accent);font-size:17px;line-height:0;vertical-align:-2px}
+.command::after{content:'';position:absolute;bottom:5px;left:30%;right:30%;height:2px;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+
+/* --- Famílias do catálogo (prefixo fam-) --- */
+.fam-gold .command{border:2px solid #edbe62;background:linear-gradient(#383328,#0b1019 65%);color:#ffe1a0}
+.fam-gold .command::after{background:#edbe62;box-shadow:0 0 8px #edbe62}
+.fam-gold .command[aria-current="true"]{color:#fff;box-shadow:inset 0 1px #fff6,0 5px 0 #03070d,0 0 22px rgba(237,190,98,.45)}
+.fam-key .command{border-radius:4px;background:linear-gradient(#5a6777,#263444);border-bottom:5px solid #09111c;box-shadow:inset 0 2px #ffffff66,0 4px 0 #000}
+.fam-round .command{border-radius:50%;width:76px;height:76px;min-width:76px;padding:8px;border:5px solid #697583;background:radial-gradient(circle at 35% 25%,#316e9e,#081728 70%);box-shadow:0 0 0 2px #151b23,0 6px 10px #000;font-size:10px;white-space:normal}
+.fam-round .command .ico{display:block;margin:0 0 3px;line-height:1}
+.fam-round .command::after{left:35%;right:35%;bottom:9px}
+.fam-capsule .command{border-radius:40px;border-color:#d6b273;background:linear-gradient(#454039,#151616 52%,#060c13)}
+.fam-hex .command{clip-path:polygon(14% 0,86% 0,100% 50%,86% 100%,14% 100%,0 50%);border:0;border-radius:0;background:linear-gradient(#c3a463 0 5%,#182c43 6% 90%,#a88340 91%);padding:18px 22px;box-shadow:none}
+.fam-screen .command{background:#031d29;border:3px solid #3c5968;box-shadow:inset 0 0 14px #107fb855,0 5px #03080d;border-radius:3px;color:#8be6ff;font-family:Consolas,var(--f-mono)}
+.fam-lever .command{padding:11px 13px 11px 38px;background:linear-gradient(#303a46,#101823);border-radius:4px}
+.fam-lever .command::before{content:'';position:absolute;left:13px;top:-8px;width:12px;height:44px;background:linear-gradient(90deg,#25282b,#dde4e6,#747d83);border-radius:7px;transform:rotate(13deg);box-shadow:2px 3px 4px #000}
+.fam-lever .command .ico{display:none}
+.fam-guard .command{border:2px solid #d9a243;border-top:9px solid #e3b562;background:#151b22;border-radius:9px 9px 4px 4px;box-shadow:inset 0 3px 12px #000,0 5px #000}
+.fam-radar .command{border-radius:9px;background:radial-gradient(ellipse at 50% 110%,#1a634e,#071f1d 65%);border-color:#699886}
+.fam-radar .command .ico{color:#96e9c9}
+.fam-radar .command::after{background:#96e9c9;box-shadow:0 0 8px #96e9c9}
+.fam-wing .rack{clip-path:polygon(9% 0,91% 0,100% 100%,0 100%);border-radius:0;background:linear-gradient(#75828e,#151d28 35%)}
+.fam-wing .command{border-radius:3px 16px 3px 16px;border-color:#8da0b1}
+.fam-disc .command{border-radius:50%;min-width:100px;height:56px;background:linear-gradient(#bec9cf,#263540 45%,#050b15 55%,#70551c);border:2px solid #deb558}
+.fam-disc .command .ico{color:#78e1ff}
+.fam-glass .command{border:1px solid #83ddff99;background:linear-gradient(145deg,#a4e6ff33,#0a1828db 55%);backdrop-filter:blur(6px);border-radius:6px;box-shadow:inset 0 1px #d2f3ff88,0 4px 12px #000}
+.fam-amber .command{color:#ffc76d;border:2px solid #6d5c40;background:repeating-linear-gradient(0deg,#211807,#211807 2px,#2d200b 3px);font-family:Consolas,var(--f-mono);box-shadow:inset 0 0 12px #000,0 5px #000}
+.fam-amber .command .ico{color:#ffc76d}
+.fam-amber .command::after{background:#ffc76d;box-shadow:0 0 8px #ffc76d}
+.fam-rib .command{border-radius:2px;background:linear-gradient(#465465,#17222e);border-left:7px double #99a6b5;border-right:7px double #99a6b5}
+.fam-beacon .command{border-radius:5px;background:#111c2b;padding-top:19px}
+.fam-beacon .command::before{content:'';position:absolute;left:18px;right:18px;top:5px;height:6px;border-radius:4px;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.fam-beacon .command::after{display:none}
+.fam-island .rack{left:22%;right:22%;height:30px;border-radius:40% 40% 0 0}
+.fam-island .command{background:linear-gradient(#34445b,#0a1628);border-color:#61758d;border-radius:13px}
+
+/* =========================================================
+   MAPA (visão geral do universo)
+   ========================================================= */
+.mapa{position:fixed;inset:0;z-index:15;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);opacity:0;pointer-events:none;transition:opacity .35s}
+.mapa.aberto{opacity:1;pointer-events:auto}
+.mapa button{border:1px solid rgba(244,203,112,.18);background:rgba(2,4,8,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:background .25s}
+.mapa button:hover,.mapa button:focus-visible{background:rgba(244,203,112,.12)}
+.mapa button[aria-current="true"]{background:rgba(83,185,255,.12)}
+.mapa .m-cod{font:500 11px/1 var(--f-mono);letter-spacing:.22em;color:var(--gold)}
+.mapa .m-nome{font:400 clamp(22px,3.4vw,44px)/1 var(--f-serif)}
+
+
+/* =========================================================
+   MODAL ("página")
+   ========================================================= */
+.fechar{min-height:44px;padding:0 16px;border-radius:999px;border:1px solid currentColor;background:transparent;cursor:pointer;font:500 11px/1 var(--f-mono);letter-spacing:.16em;text-transform:uppercase;opacity:.8;flex:none}
+.fechar:hover{opacity:1}
+.nota{font:500 12px/1.6 var(--f-mono);letter-spacing:.04em;color:var(--steel);border-left:2px solid var(--gold);padding:.6em 1em;margin:1.6em 0 0;background:rgba(244,203,112,.05)}
+.linha-tempo{list-style:none;padding:0;margin:1.2em 0;border-left:1px solid rgba(244,203,112,.45)}
+.linha-tempo li{position:relative;padding:.2em 0 1.1em 1.4em;max-width:none}
+.linha-tempo li::before{content:'';position:absolute;left:-5px;top:.55em;width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+.linha-tempo time{display:block;font:500 12px/1.4 var(--f-mono);letter-spacing:.12em;color:var(--gold)}
+.linha-tempo b{display:block;font-weight:600;color:var(--ice)}
+.linha-tempo span{color:var(--steel);font-size:14px}
+.linha-tempo .incerto::before{background:transparent;border:1px solid var(--gold);box-shadow:none}
+.grade-itens{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:0;list-style:none;margin:1.2em 0}
+.grade-itens li{border:1px solid rgba(182,208,235,.16);border-radius:12px;padding:14px 16px;background:rgba(2,4,8,.25);max-width:none}
+.grade-itens li small{display:block;font:500 11px/1.4 var(--f-mono);color:var(--gold);letter-spacing:.1em;margin-top:6px}
+.vazio{border:1px dashed rgba(244,203,112,.4);border-radius:14px;padding:22px;margin:1.2em 0}
+.form{display:grid;gap:14px;max-width:520px;margin-top:1.2em}
+.form label{display:grid;gap:6px;font-size:14px}
+.form input,.form select{min-height:44px;border-radius:8px;border:1px solid #b9b1a2;padding:0 12px;font:inherit;background:#fff;color:var(--ink)}
+.form .check{display:flex;gap:10px;align-items:flex-start;font-size:13px}
+.form .check input{min-height:auto;margin-top:4px}
+.btn{min-height:46px;border-radius:8px;border:0;background:var(--gold);color:#06111e;font-weight:600;padding:0 22px;cursor:pointer;justify-self:start}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:1.2em 0;max-width:520px;font:500 13px/1 var(--f-mono)}
+.cal span{padding:10px 0;text-align:center;border-radius:6px;background:rgba(2,4,8,.3)}
+.cal .dow{background:none;color:var(--gold);font-size:11px;letter-spacing:.1em}
+.cal .hoje{outline:1px solid var(--blue)}
+.lista-contato{list-style:none;padding:0}
+.lista-contato li{padding:.5em 0;border-bottom:1px solid rgba(182,208,235,.12)}
+.lista-contato a{color:var(--blue)}
+
+/* =========================================================
+   AJUSTES (somente protótipo)
+   ========================================================= */
+
+/* =========================================================
+   CELULAR
+   ========================================================= */
+@media (max-width:760px){
+  :root{--panel-space:96px}
+  .region{padding:76px 20px calc(var(--panel-space) + 8px)}
+  .region__inner,.region[data-col="2"] .region__inner,.region[data-col="1"] .region__inner{grid-template-columns:1fr;grid-template-rows:auto 1fr;text-align:left;justify-items:stretch;align-content:start;gap:18px}
+  .region[data-col="2"] .region__texto{order:0}
+  .region[data-col="1"] .codigo{justify-content:flex-start}
+  .region h2{font-size:clamp(40px,12vw,56px)}
+  .orbita,.region[data-col="1"] .orbita{height:auto;min-height:0;width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:18px 6px;align-content:start}
+  .orbita svg{display:none}
+  .planeta{position:static;transform:none}
+  .planeta__esfera{width:calc(var(--s,72px) * .78)}
+  .planeta__nome{font-size:10px;letter-spacing:.08em;white-space:normal;text-align:center}
+  .hero-legenda{font-size:9px;letter-spacing:.2em}
+  .logo{width:min(92vw,calc(100vh - var(--panel-space) - 140px))}
+  .rack{height:17px;border-radius:0;border-top-width:1px;padding:0;background:#111b28}
+  .rack::before,.rack::after{display:none}
+  .painel{width:100%}
+  .commands{gap:4px;transform:translateY(-27px);width:100%;padding:0 6px}
+  .command{flex:1 1 0;min-width:0;padding:7px 2px 9px;font-size:10px;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+  .command .ico{margin:0;font-size:14px;line-height:1}
+  .fam-round .commands{justify-content:center}.fam-round .command{flex:none}
+  .fam-hex .command{padding:10px 4px}
+  .fam-lever .command{padding-left:14px}.fam-lever .command::before{left:4px;top:-6px;width:7px;height:30px}
+  .region.region--hero .region__inner{grid-template-rows:1fr;align-content:center;justify-items:center}
+  .fam-round .command{width:58px;height:58px;min-width:58px;border-width:3px;font-size:9px}
+  .fam-island .rack{left:0;right:0}
+  .hud{font-size:9px}
+}
+
+/* =========================================================
+   LEGIBILIDADE — público mais velho
+   Base 18px, nada abaixo de 14px no desktop, rótulos em sans
+   com caixa normal (mono/caixa alta/espaçado só em datas e no HUD),
+   tudo em rem para o controle "Tamanho do texto" escalar o site.
+   ========================================================= */
+html{font-size:calc(100% * var(--escala-texto,1))}
+body{font-size:1.125rem;line-height:1.6}
+:root{--panel-space:9rem}
+
+/* HUD e utilitários */
+.hud{font-size:.875rem;letter-spacing:.08em}
+.hud .coord{opacity:.8;font-size:.8125rem}
+.intro__skip{font:600 1rem/1 var(--f-sans);letter-spacing:.02em;text-transform:none;min-height:48px;padding:0 22px}
+
+/* Setores: o HUD já diz o setor, então o rótulo repetido sai; texto maior e mais claro */
+.region .codigo{display:none}
+.region h2{font-size:clamp(2.75rem,6.4vw,5.75rem);text-wrap:balance}
+.region p.desc{font-size:clamp(1.1875rem,1.5vw,1.4375rem);line-height:1.55;color:#e6edf5;text-wrap:pretty}
+.planeta{gap:12px}
+.planeta__nome{font:600 1.0625rem/1.25 var(--f-sans);letter-spacing:.005em;text-transform:none;color:#fff;
+  background:rgba(2,4,8,.66);padding:.32em .8em .38em;border-radius:999px;text-shadow:none}
+.planeta:hover .planeta__nome,.planeta:focus-visible .planeta__nome{color:var(--gold)}
+.hero-legenda{font:500 1rem/1.3 var(--f-sans);letter-spacing:.06em;text-transform:none;color:rgba(234,241,250,.9)}
+.region--hero .hero-legenda{bottom:-18px;white-space:normal;padding:0 16px}
+.hero-legenda__caixa{display:inline-block;text-align:center;line-height:1.45;padding:.55em 1.2em .6em;border-radius:12px;
+  background:rgba(2,4,8,.78);border:1px solid rgba(244,203,112,.28)}  /* relativo ao miolo do setor: fica logo acima do painel */
+
+/* Painel de controle: rótulos de 17px, alvo de toque ≥ 56px */
+.commands{gap:14px}
+.command{font:600 1.0625rem/1.15 var(--f-sans);min-height:3.5rem;padding:.75rem 1.3rem}
+.command .ico{font-size:1.25rem;margin-right:.5rem}
+.fam-round .command{width:6rem;height:6rem;min-width:6rem;font-size:.9375rem}
+.fam-screen .command,.fam-amber .command{font-family:var(--f-sans)}
+.fam-hex .command{padding:1.1rem 1.6rem}
+.fam-disc .command{height:3.75rem}
+
+/* Botão selecionado: borda e traço inferior em azul-claro */
+.painel .command[aria-current="true"],.painel .command[aria-pressed="true"]{--accent:var(--sel);border-color:var(--sel);color:#fff}
+.painel .command[aria-current="true"]::after,.painel .command[aria-pressed="true"]::after{background:var(--sel);box-shadow:0 0 10px var(--sel)}
+.painel .command[aria-current="true"] .ico,.painel .command[aria-pressed="true"] .ico{color:var(--sel)}
+.painel{--sel:#8fdcff}
+.fam-gold .command[aria-current="true"]{box-shadow:inset 0 1px #fff6,0 5px 0 #03070d,0 0 18px rgba(143,220,255,.35)}
+.fam-guard .command[aria-current="true"]{border-top-color:var(--sel)}
+.fam-hex .command[aria-current="true"]{background:linear-gradient(var(--sel) 0 5%,#182c43 6% 90%,var(--sel) 91%)}
+.fam-beacon .command[aria-current="true"]::before{background:var(--sel);box-shadow:0 0 10px var(--sel)}
+
+/* Mapa */
+.mapa .m-cod{font-size:.9375rem;letter-spacing:.1em}
+.mapa .m-nome{font-size:clamp(1.75rem,3.6vw,3rem)}
+
+/* Páginas (modais) */
+.fechar{font:600 1rem/1 var(--f-sans);letter-spacing:.01em;text-transform:none;min-height:48px;padding:0 20px;opacity:1}
+.nota{font:400 1.0625rem/1.6 var(--f-sans);letter-spacing:0;color:#c8d4e1;border:1px solid rgba(244,203,112,.35);border-radius:10px;padding:.8em 1.1em}
+.linha-tempo time{font-size:1rem;letter-spacing:.06em}
+.linha-tempo b{font-size:1.25rem}
+.linha-tempo span{font-size:1.0625rem;color:#c3d0de}
+.grade-itens li small{font:600 .875rem/1.4 var(--f-sans);letter-spacing:.06em}
+.cal{font-size:1.0625rem}.cal .dow{font-size:.9375rem}
+.form label{font-size:1.0625rem}
+.form .check{font-size:1rem}
+.form input,.form select{min-height:52px;font-size:1.125rem}
+.btn{min-height:54px;font-size:1.125rem}
+
+
+@media (max-width:760px){
+  :root{--panel-space:7.5rem}
+  .hud{font-size:.8125rem}.hud .coord{display:none}
+  .region h2{font-size:clamp(2.6rem,12vw,3.6rem)}
+  .region p.desc{font-size:1.1875rem}
+  .orbita,.region[data-col="1"] .orbita{gap:22px 6px}
+  .planeta__nome{font-size:1rem;white-space:normal;padding:.28em .6em .34em}
+  .hero-legenda{font-size:.9375rem;letter-spacing:.03em}
+  .commands{gap:4px;padding:0 4px;transform:translateY(-30px)}
+  .command{flex:1 1 auto;font-size:.9375rem;min-height:4rem;padding:.5rem .3rem .7rem}
+  .command .ico{font-size:1.2rem;margin:0}
+  .fam-round .command{width:3.9rem;height:3.9rem;min-width:3.9rem;font-size:.8125rem;flex:none}
+}
+
+/* =========================================================
+   P4 · FUNDO EM CAMADAS (parallax adaptativo)
+   A imagem estática (soma das 3 camadas) fica sempre por baixo;
+   as camadas só aparecem quando o modo parallax está ativo e o quadro já carregou.
+   ========================================================= */
+.planos{position:absolute;pointer-events:none;opacity:0;transition:opacity .45s ease-out}
+.parallax-on .planos{opacity:1}
+.plano{position:absolute;inset:0;will-change:transform}
+.plano .tile{position:absolute;width:33.3334%;height:33.3334%;opacity:0;transition:opacity .5s ease-out;display:block}
+.plano .tile.pronto{opacity:1}
+.sem-flutuar .planeta__esfera,.efeitos-off .planeta__esfera{animation:none}
+
+/* Ações do topo direito */
+.topo-acoes{position:fixed;right:max(14px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));z-index:30;display:flex;gap:8px;align-items:center}
+.pg-aberta .topo-acoes{display:none}
+.efeitos-btn{min-height:46px;padding:0 16px;border-radius:8px;border:1px solid rgba(234,241,250,.22);background:rgba(2,4,8,.6);font:600 .9375rem/1 var(--f-sans);cursor:pointer;color:var(--ice)}
+.efeitos-btn[aria-pressed="true"]{border-color:var(--sel,#8fdcff);color:#fff}
+.efeitos-btn .marca{display:inline-block;width:1.1em;color:var(--sel,#8fdcff)}
+
+/* =========================================================
+   P4 · PLANETA → PÁGINA
+   ========================================================= */
+.zoom-planeta{position:fixed;z-index:21;border-radius:50%;pointer-events:none;will-change:transform;
+  background:radial-gradient(circle at 32% 28%,var(--c1) 0%,var(--c2) 42%,#03060c 100%);
+  box-shadow:inset -10px -14px 26px rgba(0,0,0,.65),0 0 40px var(--glow)}
+.pg{position:fixed;inset:0;z-index:22;overflow-y:auto;overscroll-behavior:contain;background:var(--space);color:var(--ice);
+  opacity:0;visibility:hidden;transition:opacity .28s ease-out,visibility 0s .28s}
+.pg.aberta{opacity:1;visibility:visible;transition:opacity .28s ease-out}
+.pg__topo{position:sticky;top:0;z-index:2;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  padding:14px max(18px,env(safe-area-inset-left)) 14px max(18px,env(safe-area-inset-right));background:rgba(6,17,30,.92);border-bottom:1px solid rgba(182,208,235,.12)}
+.voltar{min-height:48px;padding:0 18px;border-radius:999px;border:1px solid rgba(244,203,112,.55);background:transparent;color:#ffe1a0;font:600 1rem/1 var(--f-sans);cursor:pointer}
+.voltar:hover{background:rgba(244,203,112,.1)}
+.migalha{font:500 .9375rem/1.3 var(--f-sans);color:#c3d0de}
+.migalha a{color:#c3d0de}
+.pg__horizonte{position:relative;height:clamp(140px,26vh,260px);overflow:hidden}
+.pg__horizonte::before{content:'';position:absolute;left:50%;top:38%;width:240vmax;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(circle at 50% 2%,var(--c1) 0%,var(--c2) 14%,#06111e 30%);box-shadow:0 -10px 60px var(--glow)}
+.pg__conteudo{position:relative;max-width:72ch;margin:0 auto;padding:0 22px calc(var(--panel-space) + 40px)}
+.pg__setor{font:500 1rem/1.3 var(--f-sans);color:var(--gold);margin:0}
+.pg h1{font:400 clamp(2.6rem,6vw,4.5rem)/1 var(--f-serif);margin:.2em 0 .5em;text-wrap:balance}
+.pg h1:focus{outline:none}
+.pg p,.pg li{font-size:1.1875rem;line-height:1.65;color:#dfe8f1}
+.pg .form input,.pg .form select{background:#0b1729;color:var(--ice);border-color:#33475f}
+.rodape{border-top:1px solid rgba(182,208,235,.14);margin-top:56px;padding-top:24px;display:grid;gap:12px}
+.rodape p{font-size:1rem;color:#c3d0de;margin:0}
+.rodape nav{display:flex;flex-wrap:wrap;gap:8px 18px}
+.rodape a{color:var(--blue);font-size:1.0625rem;min-height:44px;display:inline-flex;align-items:center}
+
+/* =========================================================
+   P4 · MENU SANDUÍCHE (celular, tablet em pé, celular deitado)
+   ========================================================= */
+.menu-btn,.menu-lista,.menu-fundo{display:none}
+@media (max-width:900px),(max-height:520px){
+  .painel{display:none}
+  :root{--panel-space:6.5rem}
+  .menu-btn{display:flex;position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:27;
+    min-height:58px;min-width:min(280px,calc(100vw - 32px));padding:0 24px;border-radius:999px;border:2px solid #edbe62;
+    background:linear-gradient(#383328,#0b1019 65%);color:#ffe1a0;font:600 1.125rem/1 var(--f-sans);gap:14px;align-items:center;justify-content:center;
+    box-shadow:0 6px 0 #03070d,0 10px 22px rgba(0,0,0,.6);cursor:pointer}
+  .menu-btn[aria-expanded="true"]{border-color:var(--sel,#8fdcff);color:#fff}
+  .menu-btn__onde{color:#eaf1fa;font-weight:500}
+  .ham{position:relative;width:22px;height:16px;flex:none}
+  .ham span{position:absolute;left:0;right:0;height:2.5px;border-radius:2px;background:currentColor;transition:transform .2s cubic-bezier(.23,1,.32,1),opacity .15s}
+  .ham span:nth-child(1){top:0}.ham span:nth-child(2){top:6.75px}.ham span:nth-child(3){bottom:0}
+  .menu-btn[aria-expanded="true"] .ham span:nth-child(1){transform:translateY(6.75px) rotate(45deg)}
+  .menu-btn[aria-expanded="true"] .ham span:nth-child(2){opacity:0}
+  .menu-btn[aria-expanded="true"] .ham span:nth-child(3){transform:translateY(-6.75px) rotate(-45deg)}
+  .menu-fundo{display:block;position:fixed;inset:0;z-index:26;background:rgba(2,4,8,.6);opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s .2s}
+  .menu-fundo.aberto{opacity:1;visibility:visible;transition:opacity .2s}
+  .menu-lista{display:flex;flex-direction:column;gap:6px;position:fixed;left:50%;z-index:28;
+    bottom:calc(84px + env(safe-area-inset-bottom));width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 100px - env(safe-area-inset-bottom));overflow-y:auto;
+    padding:8px;border-radius:16px;background:rgba(6,17,30,.98);border:1px solid rgba(244,203,112,.35);
+    opacity:0;visibility:hidden;transform:translate(-50%,12px);transition:opacity .18s,transform .22s cubic-bezier(.23,1,.32,1),visibility 0s .22s}
+  .menu-lista.aberta{opacity:1;visibility:visible;transform:translate(-50%,0);transition:opacity .18s,transform .22s cubic-bezier(.23,1,.32,1)}
+  .menu-item{min-height:56px;display:flex;align-items:center;gap:14px;padding:0 18px;border-radius:10px;border:1px solid rgba(182,208,235,.18);
+    background:#0b1729;color:var(--ice);font:600 1.125rem/1.2 var(--f-sans);text-align:left;cursor:pointer;width:100%}
+  .menu-item .ico{width:1.4em;text-align:center;color:#edbe62}
+  .menu-item[aria-current="true"]{border:2px solid var(--sel,#8fdcff);color:#fff}
+  .menu-item[aria-current="true"] .ico{color:var(--sel,#8fdcff)}
+  .menu-item small{margin-left:auto;font:500 .875rem/1 var(--f-sans);color:var(--sel,#8fdcff)}
+  .hero-legenda{bottom:-6px}
+  .topo-acoes .efeitos-btn{display:none}                 /* no celular o "Reduzir efeitos" fica dentro do Menu */
+  .menu-item--efeitos{margin-top:6px;border-style:dashed}
+  .menu-item--efeitos[aria-pressed="true"]{border:2px solid var(--sel,#8fdcff)}
+}
+
+/* =========================================================
+   P5 · CORREÇÕES DA ANÁLISE (impeccable · ui-ux-pro-max · web-design-guidelines ·
+   modern-web-design · find-animation-opportunities · mobile-frontend-master)
+   ========================================================= */
+:root{ --z-mundo:0; --z-hud:20; --z-pagina:22; --z-painel:25; --z-menu-fundo:26; --z-menu-btn:27; --z-menu:28; --z-topo:30; --z-ajustes:35; --z-intro:100 }
+.has-intro .intro{z-index:var(--z-intro)} .hud{z-index:var(--z-hud)} .pg{z-index:var(--z-pagina)} .painel{z-index:var(--z-painel)}
+.menu-fundo{z-index:var(--z-menu-fundo)} .menu-btn{z-index:var(--z-menu-btn)} .menu-lista{z-index:var(--z-menu)} .topo-acoes{z-index:var(--z-topo)}
+html,body{overscroll-behavior:none}
+button,a{-webkit-tap-highlight-color:transparent}
+.viewport{touch-action:none}
+.noscript{position:fixed;inset:auto 16px 16px 16px;z-index:200;padding:16px 20px;border-radius:12px;background:#0b1729;border:1px solid #33475f;font-size:1.0625rem}
+
+/* Ícones SVG (substituem caracteres de texto) */
+.ic{width:1.2em;height:1.2em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.command .ico{line-height:0}
+.command .ico .ic{width:1.25rem;height:1.25rem}
+
+/* Botões do painel como links reais */
+.command{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
+  transition:filter .15s,transform .15s,border-color .16s,background-color .16s,box-shadow .16s,color .16s}
+.fam-round .command{flex-direction:column}
+/* Selecionado: além da cor, fundo preenchido e traço mais grosso (não depende só de cor) */
+.painel .command[aria-current="true"]{background:linear-gradient(#17405e,#0a1d30 60%,#06121f)}
+.painel .command[aria-current="true"]::after{height:4px;left:22%;right:22%;bottom:4px;border-radius:2px}
+.painel{bottom:env(safe-area-inset-bottom)}
+
+/* Planetas como links; hover só com mouse; retorno ao toque */
+a.planeta{text-decoration:none;color:inherit}
+.planeta__esfera{transition:transform .22s cubic-bezier(.23,1,.32,1),box-shadow .3s}
+@media (hover:none){ .planeta:hover .planeta__esfera{transform:none} }
+.planeta:active .planeta__esfera{transform:scale(.96);transition-duration:.12s}
+.planeta__nome{hyphens:manual;overflow-wrap:normal}
+
+/* Menu: itens como links; botão sem "sombra fantasma" */
+a.menu-item{text-decoration:none}
+.menu-item .ic{width:1.3rem;height:1.3rem;color:#edbe62}
+.menu-item[aria-current="true"] .ic{color:var(--sel,#8fdcff)}
+.menu-btn{box-shadow:0 6px 0 #03070d;transition:transform .25s cubic-bezier(.23,1,.32,1),border-color .16s}
+.menu-recolhido .menu-btn{transform:translate(-50%,calc(100% + 24px))}
+.efeitos-btn{display:inline-flex;align-items:center;gap:8px}
+.efeitos-btn .marca{display:none}
+.efeitos-btn[aria-pressed="true"]{background:#0e2a40}
+
+/* Números alinhados */
+.linha-tempo time,.cal{font-variant-numeric:tabular-nums}
+
+/* Fundo do universo: degrau intermediário para notebooks */
+@media (max-width:1600px){ .world{background-image:image-set(url(assets/universo-3840.webp) 1x, url(assets/universo-5760.webp) 2x)} }
+@media (max-width:900px){ .world{background-image:url(assets/universo-2880.webp)} }
+
+/* Aparelhos com capacidade limitada: túnel sem backdrop-filter (mais barato) */
+.leve .esmaecer{-webkit-backdrop-filter:none;backdrop-filter:none;
+  background:radial-gradient(ellipse 75% 70% at 50% 48%,rgba(1,2,5,.95) 0%,rgba(1,2,5,.9) 60%,rgba(1,2,5,.82) 100%)}
+
+/* Setor não deixa o conteúdo vazar para o vizinho */
+.region{overflow:clip}
+.logo{width:min(calc(100dvh - var(--panel-space) - 90px),86vw,760px)}
+
+/* Página: cabeçalho compacto no celular; entrada escalonada da linha do tempo; confirmação de envio */
+@media (max-width:600px){ .migalha{display:none} .pg__topo{padding-top:10px;padding-bottom:10px} }
+.pg.entrando .linha-tempo li,.pg.entrando .grade-itens li{animation:entra .28s cubic-bezier(.23,1,.32,1) both;animation-delay:calc(var(--i,0) * 40ms + 120ms)}
+@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.btn.enviado{background:#8fdcff;animation:ok .3s cubic-bezier(.23,1,.32,1)}
+@keyframes ok{from{opacity:.5;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ok-msg{margin:.4em 0 0;color:#8fdcff;font-weight:600}
+
+/* Celular: colunas que encolhem de verdade (corrige o vazamento lateral a 320px) */
+@media (max-width:760px){
+  .region__inner,.region[data-col="2"] .region__inner,.region[data-col="1"] .region__inner{grid-template-columns:minmax(0,1fr)}
+  .orbita,.region[data-col="1"] .orbita{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:360px){ .orbita,.region[data-col="1"] .orbita{grid-template-columns:repeat(2,minmax(0,1fr))} }
+/* Celular baixo (ex.: 320×568): compacta para os planetas não ficarem sob o Menu */
+@media (max-width:760px) and (max-height:720px){
+  .region{padding-top:60px}
+  .region h2{font-size:2.3rem;margin:.15em 0 .2em}
+  .region p.desc{font-size:1.0625rem;line-height:1.45}
+  .orbita,.region[data-col="1"] .orbita{gap:8px 4px}
+  .planeta{gap:6px;padding:2px}
+  .planeta__esfera{width:calc(var(--s,72px) * .58)}
+  .planeta__nome{font-size:.9375rem;padding:.2em .55em .26em}
+}
+@media (max-width:360px) and (max-height:720px){ .orbita,.region[data-col="1"] .orbita{grid-template-columns:repeat(3,minmax(0,1fr))} .planeta__nome{font-size:.875rem} }
+/* Sobre/Seja membro no desktop: órbita um pouco mais larga para os rótulos não encostarem */
+@media (min-width:761px) and (min-height:521px){ .region[data-col="1"] .orbita{width:min(860px,94%);height:min(38vh,330px)} }
+/* Tela baixa (celular deitado): texto e planetas lado a lado */
+@media (max-height:520px){
+  :root{--panel-space:4.6rem}
+  .hud .coord{display:none}
+  .region{padding:50px 24px calc(var(--panel-space) + 4px)}
+  .region__inner,.region[data-col="1"] .region__inner,.region[data-col="2"] .region__inner{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);grid-template-rows:1fr;text-align:left;justify-items:stretch;align-items:center;gap:20px}
+  .region[data-col="2"] .region__texto{order:0}
+  .region[data-col="1"] .codigo{justify-content:flex-start}
+  .region h2{font-size:clamp(1.9rem,5vw,2.6rem);margin:.1em 0 .25em}
+  .region p.desc{font-size:1.0625rem;line-height:1.45}
+  .orbita,.region[data-col="1"] .orbita{height:auto;min-height:0;width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 6px;align-content:center}
+  .orbita svg{display:none}
+  .planeta{position:static;transform:none;gap:6px;padding:2px}
+  .planeta__esfera{width:calc(var(--s,72px) * .6)}
+  .planeta__nome{font-size:.9375rem;white-space:normal;text-align:center;padding:.2em .55em .26em}
+  .region--hero .region__inner{grid-template-columns:1fr}
+  .hero-legenda{display:none}
+  .logo{width:min(calc(100dvh - var(--panel-space) - 64px),86vw)}
+  .menu-btn{min-height:50px;bottom:calc(6px + env(safe-area-inset-bottom))}
+  .menu-lista{bottom:calc(64px + env(safe-area-inset-bottom));max-height:calc(100dvh - 76px - env(safe-area-inset-bottom))}
+  .menu-item{min-height:50px}
+  .esmaecer{inset:8px 8px calc(var(--panel-space) - 4px) 8px}
+  .pg__horizonte{height:84px}
+}
+@media (max-height:400px){
+  .planeta__esfera{width:calc(var(--s,72px) * .5)}
+  .planeta__nome{font-size:.875rem}
+  .region h2{font-size:1.9rem}
+}
+
+/* =========================================================
+   P6 · ESCURECIMENTO SEM MOLDURA
+   Totalmente preto atrás dos textos e planetas; a opacidade cai
+   gradualmente até zero nas bordas. Sem linha, sem cantos, sem filtro.
+   ========================================================= */
+.esmaecer,.leve .esmaecer{
+  inset:0;border-radius:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
+  background:radial-gradient(ellipse var(--area-x) var(--area-y) at 50% 46%,
+    #000 0%, #000 var(--nucleo), rgba(0,0,0,.55) calc(var(--nucleo) + (100% - var(--nucleo)) * .5), rgba(0,0,0,0) 100%);
+}
+body{--area-x:78%;--area-y:74%;--nucleo:52%}
+@media (max-width:760px){ body{--area-x:96%;--area-y:82%} }
+@media (max-height:520px){ body{--area-x:88%;--area-y:96%} }
+
+/* =========================================================
+   P6 · FRASE DO CENTRO: contorno e fundo acompanham cada linha de texto
+   ========================================================= */
+.hero-legenda__caixa{background:none;border:0;padding:0;border-radius:0;line-height:2.15}
+.hero-legenda .hl{padding:.22em .6em .26em;border-radius:6px;background:rgba(2,4,8,.82);
+  border:1px solid rgba(244,203,112,.4);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+/* opção: halo nas letras (sem faixa) */
+body[data-legenda="halo"] .hero-legenda .hl{background:none;border:0;padding:0;
+  text-shadow:0 0 1px #000,0 0 2px #000,0 0 4px #000,0 0 9px rgba(0,0,0,.95),0 0 18px rgba(0,0,0,.85)}
+
+/* =========================================================
+   P7 · ESCURECIMENTO EM CURVA CONTÍNUA
+   A sombra de cada setor fica numa camada própria (fora do recorte do setor)
+   e chega a zero ANTES da borda do elemento: ao afastar a câmera se vê
+   só uma mancha arredondada, nunca uma linha reta.
+   ========================================================= */
+.esmaecer{display:none}
+.sombras{position:absolute;inset:0;pointer-events:none}
+.sombra{position:absolute;opacity:0;will-change:opacity;
+  background:radial-gradient(closest-side,#000 0%,#000 var(--nucleo),rgba(0,0,0,.55) calc(var(--nucleo) + (100% - var(--nucleo)) * .5),rgba(0,0,0,0) 100%)}
+.sombra.on{opacity:1;transition:opacity var(--td) cubic-bezier(.3,0,.2,1)}
+.sombra.limpando{opacity:0;transition:opacity .6s ease-out}
+
+/* =========================================================
+   P7 · FRASE DO CENTRO: uma peça preta única, sem contorno, unindo as duas linhas
+   ========================================================= */
+.hero-legenda__caixa{display:inline-flex;flex-direction:column;align-items:center;background:none;border:0;padding:0;line-height:1.35}
+.hero-legenda__caixa br{display:none}
+.hero-legenda .hl{display:block;background:#000;border:0;padding:.42em 1em .2em;border-radius:12px 12px 12px 12px;text-shadow:none}
+.hero-legenda .hl:last-child{border-radius:0 0 12px 12px;padding:.2em 1em .42em}
+body[data-legenda="sombra"] .hero-legenda__caixa{background:radial-gradient(closest-side,#000 0%,#000 64%,rgba(0,0,0,.6) 82%,rgba(0,0,0,0) 100%);padding:1.4em 3.8em}
+body[data-legenda="sombra"] .hero-legenda .hl{background:none}
+
+
+/* =========================================================
+   P8 · FRASE DO CENTRO: um corpo só, preto no meio, sumindo ao se afastar do texto.
+   Letras no estilo da inscrição da logo (Cinzel, caixa alta, ouro em relevo).
+   ========================================================= */
+@font-face{font-family:'Cinzel';font-style:normal;font-weight:700;font-display:swap;src:url(assets/fontes/cinzel-700.woff2) format('woff2')}
+.hero-legenda{font:700 clamp(1.25rem,.85rem + .9vw,1.75rem)/1.25 'Cinzel',Georgia,'Times New Roman',serif;letter-spacing:.07em;text-transform:uppercase;color:#f4cb70}
+.region--hero .hero-legenda{bottom:-34px}
+.hero-legenda__caixa{position:relative;isolation:isolate;display:inline-flex;flex-direction:column;align-items:center;gap:.12em;
+  background:none!important;border:0;border-radius:0;padding:.35em .9em!important;line-height:1.25}
+.hero-legenda__caixa::before{content:"";position:absolute;inset:-160% -26%;z-index:-1;pointer-events:none;
+  /* P9: preto pleno só no miolo; a opacidade começa a cair cedo e desce suave até a borda */
+  /* P11: gradiente contínuo, do preto no centro até a transparência na borda */
+  background:radial-gradient(closest-side,rgba(0,0,0,1) 0%,rgba(0,0,0,.95) 16%,rgba(0,0,0,.86) 31%,rgba(0,0,0,.73) 46%,rgba(0,0,0,.56) 60%,rgba(0,0,0,.37) 73%,rgba(0,0,0,.18) 86%,rgba(0,0,0,0) 100%)}
+body[data-legenda="ampla"] .hero-legenda__caixa::before{inset:-150% -36%;
+  background:radial-gradient(closest-side,rgba(0,0,0,1) 0%,rgba(0,0,0,.92) 18%,rgba(0,0,0,.8) 34%,rgba(0,0,0,.64) 50%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.25) 80%,rgba(0,0,0,.1) 91%,rgba(0,0,0,0) 100%)}
+.hero-legenda .hl,body[data-legenda] .hero-legenda .hl{display:block;padding:0;border:0;border-radius:0;text-shadow:none;
+  background:linear-gradient(180deg,#fff1c7 0%,#f6d27e 32%,#d9962a 58%,#b8731a 72%,#f4cb70 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 1px 0 #4a2604) drop-shadow(0 2px 2px rgba(0,0,0,.9))}
+.hero-legenda .hl--ano{font-size:.82em;letter-spacing:.14em}
+.hero-legenda .quebra{display:none}
+/* P10: a sombra da frase passa por trás da logo e continua por trás do painel/Menu */
+.region--hero .logo{z-index:2}
+.region--hero .hero-legenda{z-index:1;pointer-events:none}
+@media (max-width:640px){
+  .hero-legenda{font-size:clamp(1.125rem,5.2vw,1.375rem);letter-spacing:.05em}
+  .hero-legenda .sep{display:none}
+  .hero-legenda .quebra{display:block}
+  .region--hero .hero-legenda{bottom:-30px}
+}
+/* =========================================================
+   P7 · ENTRADA DO PAINEL NO HERO (some até a animação começar)
+   ========================================================= */
+.pre-painel .rack,.pre-painel .menu-btn{opacity:0}
+
+/* =========================================================
+   P7 · EFEITOS: Automático / Completos / Reduzidos
+   ========================================================= */
+
+/* =========================================================
+   P11 · BOTÃO "FUNDO EM MOVIMENTO" (parallax) — tecla dourada de painel de nave
+   O ícone é vazado: apagado mostra o escuro de dentro; ligado, passa uma luz azul.
+   ========================================================= */
+.plx-btn{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.1' stroke-linejoin='round'%3E%3Cpath d='M10.5 3.2C11.2 8.4 13.3 10.6 18.6 11.4 13.3 12.2 11.2 14.4 10.5 19.6 9.8 14.4 7.7 12.2 2.4 11.4 7.7 10.6 9.8 8.4 10.5 3.2Z'/%3E%3Cpath d='M18.6 15.4c.3 1.8.9 2.4 2.6 2.7-1.7.3-2.3.9-2.6 2.7-.3-1.8-.9-2.4-2.6-2.7 1.7-.3 2.3-.9 2.6-2.7Z' stroke-width='1.6'/%3E%3C/svg%3E");;position:relative;flex:none;width:54px;height:54px;padding:0;border:0;border-radius:15px;cursor:pointer;
+  background:linear-gradient(150deg,#fff1c4 0%,#f4cb70 18%,#cf8b1a 45%,#7a4208 72%,#d9a043 90%,#ffe3a0 100%);
+  box-shadow:inset 0 1px 0 rgba(255,250,230,.9),inset 0 -2px 2px rgba(70,35,0,.55),0 0 0 1px #2b1704,0 3px 0 #1d1004,0 6px 12px rgba(0,0,0,.65);
+  transition:transform .12s ease-out,box-shadow .12s ease-out;-webkit-tap-highlight-color:transparent}
+.plx-btn:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,250,230,.8),inset 0 -1px 2px rgba(70,35,0,.55),0 0 0 1px #2b1704,0 1px 0 #1d1004,0 3px 6px rgba(0,0,0,.6)}
+.plx-btn:focus-visible{outline:3px solid #8fdcff;outline-offset:3px}
+.plx-btn__placa{position:absolute;inset:5px;border-radius:11px;
+  background:linear-gradient(165deg,#c98a26 0%,#f2c96a 30%,#a96a12 70%,#e0aa4c 100%);
+  box-shadow:inset 0 2px 3px rgba(60,28,0,.65),inset 0 -1px 0 rgba(255,236,190,.6)}
+.plx-btn__vazio,.plx-btn__luz{position:absolute;inset:12px;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat}
+.plx-btn__vazio{background:linear-gradient(180deg,#000 0%,#0b1422 100%)}
+.plx-btn__brilho{position:absolute;inset:0;opacity:0;transition:opacity .35s ease-out;
+  filter:drop-shadow(0 0 2px rgba(150,225,255,.95)) drop-shadow(0 0 7px rgba(60,170,255,.8))}
+.plx-btn__luz{background:radial-gradient(circle at 50% 48%,#f4fdff 0%,#a6e8ff 32%,#3fb0f5 66%,#1767c0 100%)}
+.plx-btn[aria-pressed="true"] .plx-btn__brilho{opacity:1;animation:plx-ignicao .5s ease-out}
+@keyframes plx-ignicao{0%{opacity:0}22%{opacity:.8}38%{opacity:.25}62%{opacity:.95}100%{opacity:1}}
+.plx-btn::after{content:attr(data-dica);position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);white-space:nowrap;
+  padding:9px 12px;border-radius:8px;background:#06111e;border:1px solid rgba(182,208,235,.24);font:600 .9375rem/1 var(--f-sans);color:var(--ice);
+  opacity:0;pointer-events:none;transition:opacity .15s}
+@media (hover:hover){.plx-btn:hover::after{opacity:1}}
+.plx-btn:focus-visible::after{opacity:1}
+@media (max-width:900px),(max-height:520px){.plx-btn{width:48px;height:48px;border-radius:13px}.plx-btn__vazio,.plx-btn__luz{inset:11px}}
+
+/* =========================================================
+   P14 · INTRO: clicar em qualquer lugar pula. Botão minimalista e vazado:
+   contorno, texto e barra de progresso brancos — no clarão final ele some junto com a luz.
+   ========================================================= */
+.intro.can-skip{cursor:pointer}
+.intro__skip{display:inline-flex;align-items:center;gap:12px;min-height:52px;padding:0 18px 0 22px;white-space:nowrap;
+  right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));
+  border:1.5px solid rgba(255,255,255,.92);border-radius:3px;background:transparent;box-shadow:none;clip-path:none;
+  font:600 .9375rem/1 var(--f-sans);letter-spacing:.2em;text-transform:uppercase;color:#fff;
+  transform:translateY(8px);transition:opacity .45s ease-out,transform .45s cubic-bezier(.23,1,.32,1),background-color .15s}
+.intro.can-skip .intro__skip{transform:none}
+.intro__skip-ic{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.intro__skip-prog{position:absolute;left:-1.5px;right:-1.5px;bottom:-1.5px;height:3px;overflow:hidden}
+.intro__skip-prog i{position:absolute;inset:0;background:#fff;transform-origin:0 50%;transform:scaleX(0)}
+@media (hover:hover){.intro__skip:hover{background-color:rgba(255,255,255,.12)}}
+.intro__skip:active{transform:translateY(2px)}
+.intro__skip:focus-visible{outline:2px solid #fff;outline-offset:4px}
+@media (max-width:520px){.intro__skip{left:50%;right:auto;transform:translate(-50%,8px)}.intro.can-skip .intro__skip{transform:translateX(-50%)}.intro__skip:active{transform:translate(-50%,2px)}}
+/* =========================================================
+   P14 · NAVE: o disco da logo cruza o céu da galáxia
+   ========================================================= */
+#hudCod,#hudNome,#menuOnde{display:inline-block}
+.naves{position:absolute;inset:0;pointer-events:none}
+.naves.frente{z-index:5}
+.nave{position:absolute;left:0;top:0;opacity:0;transform-origin:50% 50%;will-change:transform,opacity;pointer-events:none}
+.nave__corpo{position:absolute;inset:0}
+.nave__balanco img{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none}
+.nave__brilho{position:absolute;inset:-70% -35%;background:radial-gradient(closest-side,rgba(120,200,255,.30),rgba(120,200,255,0))}
+.nave__cauda{position:absolute;right:50%;top:31%;width:620%;height:38%;opacity:0;transform-origin:100% 50%;transform:rotate(var(--ang,0deg));clip-path:polygon(0 48%,100% 8%,100% 92%,0 52%);
+  background:linear-gradient(90deg,rgba(143,220,255,0) 0%,rgba(143,220,255,.18) 40%,rgba(205,240,255,.7) 88%,rgba(255,255,255,.95) 100%)}
+.nave__corpo.flutua{animation:nave-bob 3.2s ease-in-out infinite}
+.nave__corpo.flutua .nave__balanco{animation:nave-balanco 4.7s ease-in-out infinite}
+.nave__balanco{position:absolute;inset:0}
+/* parada no lugar, a nave paira: sobe e desce e balança de leve (amplitude --amp calculada pelo tamanho) */
+@keyframes nave-bob{0%,100%{transform:translateY(0)}25%{transform:translateY(calc(var(--amp,4px) * -1))}75%{transform:translateY(var(--amp,4px))}}
+@keyframes nave-balanco{0%,100%{transform:translateX(0) rotate(0deg)}30%{transform:translateX(calc(var(--amp,4px) * .6)) rotate(3deg)}70%{transform:translateX(calc(var(--amp,4px) * -.6)) rotate(-3deg)}}
+.camada.fora{opacity:0}
+
+/* =========================================================
+   P14 · MAPA: o grid só aparece depois do afastamento, com o mesmo fade dos textos dos setores
+   ========================================================= */
+.mapa{transition:opacity .45s ease-out}
+.mapa:not(.aberto){transition-duration:.18s}
+.mapa .m-cod,.mapa .m-nome{opacity:0;transform:translateY(12px);transition:opacity .45s ease-out,transform .6s cubic-bezier(.16,1,.3,1)}
+.mapa.aberto .m-cod,.mapa.aberto .m-nome{opacity:1;transform:none}
+.mapa.aberto .m-nome{transition-delay:.06s}
+.mapa:not(.aberto) .m-cod,.mapa:not(.aberto) .m-nome{transition-duration:.18s}
+
+/* =========================================================
+   P15 · SELO KUPIM DIGITAL (adaptado do snippet do site My Favorite Bags)
+   Fechado: só o "K" discreto na borda direita. Mouse em cima, foco do teclado ou
+   1º toque: a faixa abre da direita para a esquerda e o K desliza e cresce.
+   ========================================================= */
+#kupim-badge-wrap{position:fixed;right:0;bottom:calc(var(--panel-space) + 14px);z-index:var(--z-painel);height:64px}
+#kupim-badge{position:absolute;top:0;right:0;height:100%;display:flex;align-items:center;justify-content:flex-start;
+  background:#0f1d31;opacity:0;cursor:pointer;white-space:nowrap;box-sizing:border-box;text-decoration:none;color:#eff3f8;
+  clip-path:inset(0 0 0 calc(100% - 44px) round 32px);
+  transition:clip-path 1.5s cubic-bezier(.22,1,.36,1),opacity .6s ease,box-shadow .6s ease;box-shadow:0 4px 14px rgba(0,0,0,0)}
+#kupim-badge-wrap:hover #kupim-badge,#kupim-badge-wrap:focus-within #kupim-badge,#kupim-badge-wrap.is-open #kupim-badge{
+  opacity:.94;clip-path:inset(0 0 0 0 round 32px 0 0 32px);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+#kupim-badge:focus-visible{outline:2px solid #8fdcff;outline-offset:-4px}
+#kupim-badge .k-logo-spacer{flex:0 0 44px;width:44px;height:44px}
+.k-logo-wrap{position:absolute;top:0;right:0;width:44px;height:64px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2;
+  opacity:.3;transform:translateX(0) scale(1);transition:transform 1.5s cubic-bezier(.22,1,.36,1),opacity .6s ease}
+#kupim-badge-wrap:hover .k-logo-wrap,#kupim-badge-wrap:focus-within .k-logo-wrap,#kupim-badge-wrap.is-open .k-logo-wrap{
+  opacity:1;transform:translateX(calc(-1 * var(--k-shift, 400px))) scale(3)}
+@keyframes k-hue-wave{0%{filter:hue-rotate(0deg) saturate(1)}18%{filter:hue-rotate(14deg) saturate(1)}36%{filter:hue-rotate(0deg) saturate(1)}54%{filter:hue-rotate(14deg) saturate(1)}
+  70%{filter:hue-rotate(0deg) saturate(1)}78%{filter:hue-rotate(100deg) saturate(2.6)}84%{filter:hue-rotate(160deg) saturate(2.8)}90%{filter:hue-rotate(160deg) saturate(2.8)}96%{filter:hue-rotate(60deg) saturate(1.6)}100%{filter:hue-rotate(0deg) saturate(1)}}
+.k-logo-wrap svg{width:20px;height:auto;display:block;animation:k-hue-wave 8s ease-in-out infinite}
+#kupim-badge .badge-text{flex:0 0 auto;width:max-content;max-width:500px;padding-left:2px;padding-right:35px;font:400 1rem/1.6 var(--f-sans);color:#eff3f8;opacity:.94;white-space:normal;text-align:right}
+#kupim-badge .badge-text b{font-weight:600}
+/* aparece só na tela principal (Início, com a logo): some ao sair para outro setor, no mapa e nas páginas */
+#kupim-badge-wrap{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .35s ease,visibility 0s linear .35s}
+body.no-inicio:not(.mapa-aberto):not(.pg-aberta):not(.pre-painel) #kupim-badge-wrap{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .6s ease .5s,visibility 0s}
+.efeitos-off .k-logo-wrap svg{animation:none}
+/* movimento reduzido: a faixa abre por esmaecimento, sem deslizar */
+.mov-reduzido #kupim-badge,.mov-reduzido #kupim-badge-wrap:hover #kupim-badge{clip-path:none!important}
+.mov-reduzido #kupim-badge-wrap:not(:hover):not(:focus-within):not(.is-open) #kupim-badge{visibility:hidden}
+.mov-reduzido #kupim-badge-wrap:hover .k-logo-wrap,.mov-reduzido #kupim-badge-wrap:focus-within .k-logo-wrap,.mov-reduzido #kupim-badge-wrap.is-open .k-logo-wrap{opacity:0}
+@media (max-width:900px),(max-height:520px){ #kupim-badge-wrap{bottom:calc(84px + env(safe-area-inset-bottom))} }
+@media (max-width:480px){
+  #kupim-badge{top:auto;bottom:0;width:min(94vw,400px);height:auto;min-height:64px;padding:8px 0}
+  #kupim-badge .badge-text{flex:1 1 auto;min-width:0;width:auto;max-width:none;padding-right:16px;font-size:.875rem;line-height:1.45}
+}
+/* Movimento reduzido: vem do sistema (modo Automático) ou da escolha "Reduzidos" do visitante */
+.mov-reduzido *,.mov-reduzido *::before,.mov-reduzido *::after{animation:none!important;transition-duration:.01ms!important}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></symbol>
+  <symbol id="i-eventos" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-sobre" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.6v.4"/></symbol>
+  <symbol id="i-membro" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/><path d="M19 8v6M16 11h6"/></symbol>
+  <symbol id="i-loja" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+  <symbol id="i-mapa" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/></symbol>
+  <symbol id="i-avisos" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4l2-2z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-videos" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-palestrantes" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></symbol>
+  <symbol id="i-contato" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-efeitos" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-ajustes" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="i-voltar" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+</svg>
+<noscript><div class="noscript"><b translate="no">BRAUFONET</b> – Brazil UFO Network. Esta navegação precisa de JavaScript. Contato: WhatsApp (81) 9 9447-3390 · braufonet@gmail.com</div></noscript>
+
+<!-- ===== INTRO ===== -->
+<div class="intro" id="intro" aria-hidden="true">
+  <video class="intro__video" id="introVideo" muted playsinline preload="auto" disablepictureinpicture>
+    <source src="../videos/intro.webm" type="video/webm">
+    <source src="../videos/intro_backup.mp4" type="video/mp4">
+  </video>
+  <div class="intro__white"></div>
+  <button class="intro__skip" id="introSkip" type="button" tabindex="-1"><span>Pular intro</span><svg class="intro__skip-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5l7 7-7 7"/><path d="M12 5l7 7-7 7"/></svg><span class="intro__skip-prog" aria-hidden="true"><i id="introProg"></i></span></button>
+</div>
+
+<div id="app">
+  <h1 class="sr-only"><span translate="no">BRAUFONET</span> — Brazil UFO Network</h1>
+
+  <div class="hud" aria-hidden="true">
+    <div><b id="hudCod">SETOR 05</b> · <span id="hudNome">Origem</span></div>
+    <div class="coord">08°03′S · 34°54′W · RECIFE</div>
+  </div>
+
+  <main class="viewport" id="viewport">
+    <div class="world" id="world"></div>
+  </main>
+
+  <div class="mapa" id="mapa" aria-hidden="true"></div>
+
+  <nav class="painel fam-gold" id="painel" aria-label="Painel de navegação">
+    <div class="rack"><div class="commands" id="commands"></div></div>
+  </nav>
+
+  <div class="topo-acoes">
+    <button class="plx-btn" id="plxBtn" type="button" aria-pressed="true" aria-label="Efeitos visuais" data-dica="Efeitos ligados">
+      <span class="plx-btn__placa" aria-hidden="true"></span><span class="plx-btn__vazio" aria-hidden="true"></span>
+      <span class="plx-btn__brilho" aria-hidden="true"><span class="plx-btn__luz"></span></span>
+    </button>
+  </div>
+
+  <!-- Menu sanduíche (celular / tablet / celular deitado) -->
+  <div class="menu-fundo" id="menuFundo"></div>
+  <nav class="menu-lista" id="menuLista" aria-label="Menu principal"></nav>
+  <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="menuLista">
+    <span class="ham" aria-hidden="true"><span></span><span></span><span></span></span>
+    <span>Menu</span><span class="menu-btn__onde" id="menuOnde">· Início</span>
+  </button>
+</div>
+
+<!-- Página aberta a partir de um planeta -->
+<div class="pg" id="pg" aria-hidden="true"></div>
+
+
+
+
+<div class="sr-only" id="aviso" aria-live="polite"></div>
+
+<script>
+/* ==========================================================================
+   CONTEÚDO — edite aqui. Grade 3×3: col 0..2 (esq→dir), row 0..2 (cima→baixo)
+   ========================================================================== */
+const REGIOES = [
+  { id:'avisos', col:0, row:0, nome:'Avisos', titulo:'Avisos', desc:'O que há de novo na rede, em ordem de publicação: inscrições abertas, convidados confirmados, mudanças de local.',
+    planetas:[ {id:'recentes', nome:'Recentes', cor:'azul', s:84}, {id:'receber', nome:'Receber avisos', cor:'ouro', s:66, anel:1} ] },
+  { id:'sobre', col:1, row:0, nome:'Sobre', titulo:'Sobre', desc:'A BRAUFONET é uma rede de ufologia nascida no Recife em 2018, dedicada a eventos, documentação e debate sobre fenômenos aéreos não identificados.',
+    planetas:[ {id:'historia', nome:'História', cor:'ouro', s:84}, {id:'visao', nome:'Visão', cor:'azul', s:64}, {id:'valores', nome:'Valores', cor:'gelo', s:70, anel:1}, {id:'diretoria', nome:'Diretoria', cor:'mar', s:58}, {id:'transparencia', nome:'Transpa\u00ADrência', cor:'ambar', s:62} ] },
+  { id:'videos', col:2, row:0, nome:'Vídeos', titulo:'Vídeos & entrevistas', desc:'Palestras, entrevistas e casos regionais do canal @BRAUFONET, organizados por tipo.',
+    planetas:[ {id:'palestras', nome:'Palestras', cor:'azul', s:80}, {id:'entrevistas', nome:'Entrevistas', cor:'ouro', s:70, anel:1}, {id:'casos', nome:'Casos regionais', cor:'ambar', s:64}, {id:'shorts', nome:'Shorts', cor:'gelo', s:54} ] },
+  { id:'eventos', col:0, row:1, nome:'Eventos', titulo:'Eventos', desc:'Workshops, congressos e jornadas de ufologia, ciência e espiritualidade — desde 2018.',
+    planetas:[ {id:'proximos', nome:'Próximos', cor:'ouro', s:92, anel:1}, {id:'calendario', nome:'Calendário', cor:'azul', s:66}, {id:'realizados', nome:'Realizados', cor:'gelo', s:76}, {id:'duvidas', nome:'Dúvidas', cor:'mar', s:56} ] },
+  { id:'inicio', col:1, row:1, nome:'Origem', hero:true },
+  { id:'loja', col:2, row:1, nome:'Loja', titulo:'Loja', desc:'Produtos oficiais da BRAUFONET: vestuário, livros, materiais de observação e colecionáveis.',
+    planetas:[ {id:'vestuario', nome:'Vestuário', cor:'ouro', s:80}, {id:'livros', nome:'Livros', cor:'ambar', s:70}, {id:'digitais', nome:'Digitais', cor:'azul', s:60}, {id:'observacao', nome:'Obser\u00ADvação', cor:'mar', s:66, anel:1}, {id:'colecionaveis', nome:'Colecio\u00ADnáveis', cor:'gelo', s:58} ] },
+  { id:'palestrantes', col:0, row:2, nome:'Palestrantes', titulo:'Palestrantes', desc:'Pesquisadores, autores e convidados que já passaram pelos eventos da rede.',
+    planetas:[ {id:'todos', nome:'Todos', cor:'azul', s:82}, {id:'seja-palestrante', nome:'Seja palestrante', cor:'ouro', s:62, anel:1} ] },
+  { id:'membro', col:1, row:2, nome:'Seja membro', titulo:'Seja membro', desc:'Faça parte da rede: encontros, avisos em primeira mão e participação nas atividades da associação.',
+    planetas:[ {id:'como-funciona', nome:'Como funciona', cor:'azul', s:70}, {id:'beneficios', nome:'Benefícios', cor:'ouro', s:82, anel:1}, {id:'cadastro', nome:'Cadastro', cor:'gelo', s:64} ] },
+  { id:'contato', col:2, row:2, nome:'Contato', titulo:'Contato', desc:'Fale com a BRAUFONET pelo WhatsApp, e-mail ou redes sociais. Sede no Recife, Pernambuco.',
+    planetas:[ {id:'whatsapp', nome:'WhatsApp', cor:'mar', s:80}, {id:'email', nome:'E-mail', cor:'azul', s:62}, {id:'sede', nome:'Sede', cor:'ouro', s:68, anel:1}, {id:'redes', nome:'Redes', cor:'gelo', s:58}, {id:'privacidade', nome:'Privacidade', cor:'azul', s:52}, {id:'termos', nome:'Termos', cor:'gelo', s:50} ] },
+];
+/* Botões do painel inferior */
+const PAINEL = [
+  { id:'inicio', rotulo:'Início', ico:'inicio' },
+  { id:'eventos', rotulo:'Eventos', ico:'eventos' },
+  { id:'sobre', rotulo:'Sobre', ico:'sobre' },
+  { id:'membro', rotulo:'Membro', ico:'membro' },
+  { id:'loja', rotulo:'Loja', ico:'loja' },
+  { id:'#mapa', rotulo:'Mapa', ico:'mapa' },
+];
+const icone = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const FAMILIAS = [
+  ['gold','01 · Moldura dourada'],['key','02 · Tecla mecânica'],['round','03 · Botão de propulsão'],['capsule','04 · Cápsula orbital'],
+  ['hex','05 · Módulo hexagonal'],['screen','06 · Navegação digital'],['lever','07 · Alavanca'],['guard','08 · Comando protegido'],
+  ['radar','09 · Observação'],['wing','10 · Console em asa'],['disc','11 · Disco voador'],['glass','12 · Vidro de instrumento'],
+  ['amber','13 · Terminal âmbar'],['rib','14 · Tecla industrial'],['beacon','15 · Sinalizador'],['island','16 · Pedestal'],
+];
+
+/* Conteúdo das "páginas" (modais). Textos provisórios, baseados no material do projeto. */
+const PAGINAS = {
+  'eventos/realizados': { html: `
+    <p>Arquivo das edições já realizadas. Cada item vira uma página própria com fotos, vídeos, palestrantes e parceiros.</p>
+    <ol class="linha-tempo">
+      <li><time>10.11.2018</time><b>1º Workshop de Ufologia e Espiritualidade de Recife</b><span>Marante Plaza Hotel · Recife</span></li>
+      <li><time>06.07.2019</time><b>II Workshop de Ufologia de Recife</b><span>Vela Branca Praia Hotel · Recife</span></li>
+      <li class="incerto"><time>2019</time><b>UFO Summit Brazil in Recife</b><span>com a Revista UFO · a confirmar</span></li>
+      <li class="incerto"><time>2021</time><b>I Encontro de Ufologia e Hipnose</b><span>a confirmar</span></li>
+      <li><time>15–16.04.2023</time><b>I Congresso de Ufologia e Espiritualidade de Pernambuco</b><span>Recife</span></li>
+      <li><time>02.12.2023</time><b>III Workshop de Ufologia e Espiritualidade de Pernambuco</b><span>Hotel Beach Class Convention · Recife</span></li>
+      <li class="incerto"><time>10.2024</time><b>II Congresso Internacional de Ufologia, Ciência e Espiritualidade</b><span>anunciado · realização a confirmar</span></li>
+      <li><time>06.06.2026</time><b>I JUCE-PE — Jornada de Ufologia, Ciência e Espiritualidade</b><span>“A Era dos Contatos Interdimensionais” · Hotel Beach Class Convention</span></li>
+    </ol>
+    <p class="nota">Pontos vazados = edição a confirmar com a BRAUFONET (ver requisitos, seção 3).</p>` },
+  'eventos/proximos': { html: `
+    <div class="vazio"><b>Nenhum evento agendado no momento.</b><p>A próxima edição está sendo preparada. Receba o aviso assim que as inscrições abrirem.</p>
+    <form class="form" onsubmit="return enviado(this)"><label>Seu e-mail<input type="email" name="email" inputmode="email" enterkeyhint="send" required autocomplete="email"></label><label class="check"><input type="checkbox" required> Aceito receber avisos de eventos da BRAUFONET.</label><button class="btn">Quero ser avisado</button></form></div>
+    <p class="nota">Estado vazio exigido pelo RF-05: nunca exibir evento passado como se estivesse à venda.</p>` },
+  'eventos/calendario': { html: () => calendarioHTML() },
+  'sobre/historia': { papel:true, html: `
+    <p>A BRAUFONET – Brazil UFO Network começou suas atividades em 2018, no Recife, por iniciativa de Alexandre Lauzid. Desde então reuniu pesquisadores, autores e interessados em workshops, congressos e jornadas que unem ufologia, ciência e espiritualidade.</p>
+    <p>Em 2026 a rede se formalizou como associação: <b>Rede Brasileira de Ufologia – BRAUFONET</b>, com sede no bairro de Afogados, no Recife.</p>
+    <p class="nota">Texto provisório, a validar com o presidente.</p>` },
+  'sobre/visao': { papel:true, html: `
+    <p>Ser uma rede de referência na investigação e divulgação da ufologia no Brasil e no cenário internacional, promovendo a cooperação entre pesquisadores, instituições e sociedade civil, com foco na transparência, no conhecimento e na análise responsável dos fenômenos OVNI/UAP.</p>
+    <p class="nota">Texto do presidente, adaptado para português do Brasil.</p>` },
+  'sobre/valores': { papel:true, html: `
+    <ul class="grade-itens">
+      <li><b>Ética e responsabilidade</b><br>Integridade, respeito e transparência em todas as atividades.</li>
+      <li><b>Investigação rigorosa</b><br>Relatos, documentos e evidências analisados com método e espírito crítico.</li>
+      <li><b>Cooperação</b><br>Intercâmbio de conhecimento entre pesquisadores e organizações.</li>
+      <li><b>Respeito pelos testemunhos</b><br>Escuta séria, empática e imparcial de quem relata experiências.</li>
+      <li><b>Divulgação responsável</b><br>Atenção à origem, credibilidade e contexto de cada informação.</li>
+      <li><b>Liberdade de investigação</b><br>Questionamento, diálogo e busca contínua de conhecimento.</li>
+    </ul>` },
+  'sobre/transparencia': { papel:true, html: `
+    <ul class="lista-contato">
+      <li><b>Razão social:</b> Rede Brasileira de Ufologia – BRAUFONET</li>
+      <li><b>CNPJ:</b> 68.162.826/0001-90 · associação privada</li>
+      <li><b>Presidente:</b> Alexandre Roberto Bezerra Lauzid</li>
+      <li><b>Quem organiza, vende e recebe em cada evento:</b> a definir</li>
+    </ul>
+    <p class="nota">RF-71. Estatuto, políticas e explicação sobre as entidades entram aqui após validação.</p>` },
+  'loja/vestuario': { html: lojaHTML(['Camiseta oficial BRAUFONET','Camiseta “Eu acredito”','Boné BRAUFONET','Jaqueta oficial','Moletom','Patch bordado']) },
+  'loja/livros': { html: lojaHTML(['Ufologia brasileira','Ufologia mundial','Dossiês de casos brasileiros','Guias de investigação','Revistas especializadas']) },
+  'loja/digitais': { html: lojaHTML(['E-books','Dossiês em PDF','Palestras gravadas','Cursos online','Wallpapers']) },
+  'loja/observacao': { html: lojaHTML(['Caderno de campo','Kit Investigador','Kit Vigília','Cartas celestes','Bússola','Lanterna de campo']) },
+  'loja/colecionaveis': { html: lojaHTML(['Pins colecionáveis','Miniaturas de discos','Medalhas de congressos','Pôsteres','Edição limitada numerada']) },
+  'membro/cadastro': { papel:true, html: `
+    <form class="form" onsubmit="return enviado(this)">
+      <label>Nome completo<input name="nome" required autocomplete="name" enterkeyhint="next"></label>
+      <label>E-mail<input type="email" name="email" inputmode="email" required autocomplete="email" enterkeyhint="next"></label>
+      <label>Cidade / UF<input name="cidade" autocomplete="address-level2" enterkeyhint="next"></label>
+      <label>Interesse principal<select name="interesse"><option>Ciência e documentos</option><option>Espiritualidade</option><option>Relatos e casos</option><option>Eventos</option></select></label>
+      <label class="check"><input type="checkbox" required> Li a política de privacidade e autorizo o uso dos meus dados para o cadastro de membro.</label>
+      <button class="btn">Quero ser membro</button>
+    </form>` },
+  'contato/whatsapp': { html: `<ul class="lista-contato"><li><a href="https://wa.me/5581994473390" target="_blank" rel="noopener">(81) 9 9447-3390</a> · WhatsApp</li></ul>` },
+  'contato/email': { html: `<ul class="lista-contato"><li><a href="mailto:braufonet@gmail.com">braufonet@gmail.com</a></li></ul>` },
+  'contato/sede': { html: `<ul class="lista-contato"><li>Rua Professor Frederico Curió, 337 · Afogados · Recife/PE</li><li>CEP a confirmar (50830-380 ou 50830-370)</li></ul>` },
+  'contato/redes': { html: `<ul class="lista-contato"><li><a href="https://www.youtube.com/@BRAUFONET" target="_blank" rel="noopener">YouTube @BRAUFONET</a></li><li><a href="https://www.instagram.com/braufonet/" target="_blank" rel="noopener">Instagram @braufonet</a></li></ul>` },
+};
+function enviado(f){
+  const b = f.querySelector('.btn'); b.textContent = '✓ Recebido'; b.classList.add('enviado'); b.disabled = true;
+  if (!f.querySelector('.ok-msg')) f.insertAdjacentHTML('beforeend','<p class="ok-msg" role="status">Protótipo: nada foi enviado de verdade.</p>');
+  return false;
+}
+function lojaHTML(itens){ return `<ul class="grade-itens">${itens.map(i=>`<li>${i}<small>EM BREVE</small></li>`).join('')}</ul><p class="nota">Fase 1 = vitrine (RF-60): pedido pelo WhatsApp ou link de pagamento.</p>`; }
+function calendarioHTML(){
+  const d=new Date(), y=d.getFullYear(), m=d.getMonth(), first=new Date(y,m,1).getDay(), dias=new Date(y,m+1,0).getDate();
+  const nomes=['D','S','T','Q','Q','S','S'], mes=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  let h=`<p style="text-transform:capitalize">${mes}</p><div class="cal">${nomes.map(n=>`<span class="dow">${n}</span>`).join('')}`;
+  for(let i=0;i<first;i++) h+='<span style="background:none"></span>';
+  for(let i=1;i<=dias;i++) h+=`<span class="${i===d.getDate()?'hoje':''}">${i}</span>`;
+  return h+`</div><p class="nota">Sem eventos neste mês. A lista e o calendário mostram os mesmos eventos (RF-12/13).</p>`;
+}
+
+/* ==========================================================================
+   ESTADO E UTILITÁRIOS
+   ========================================================================== */
+const $ = s => document.querySelector(s);
+const reduz = matchMedia('(prefers-reduced-motion: reduce)');
+function movReduzido(){ return reduz.matches; }                       // voos e animações: segue o sistema do aparelho
+function prefParallax(){ try { return localStorage.getItem('bn-efeitos-pesados') || 'auto'; } catch(e){ return 'auto'; } }   // botão de efeitos (estrela dourada)
+/* Efeitos pesados desligados: parallax do fundo, logo com o mouse, planetas flutuando,
+   afastamento no meio do voo, montagem animada da logo e aproximação do planeta. */
+function efeitosReduzidos(){ const p = prefParallax(); return p==='off' || (p!=='on' && reduz.matches); }
+const CURVAS = { suave:[.65,0,.35,1], forte:[.83,0,.17,1], salto:[.87,0,.13,1], linear:[0,0,1,1] };
+/* ---------------------------------------------------------------------------
+   AJUSTES DEFINITIVOS DO SITE
+   É isto que o visitante vê. Para mudar: ajuste no index_aux.html, clique em
+   "Copiar ajustes" e substitua a linha abaixo pelo texto copiado.
+   --------------------------------------------------------------------------- */
+const PADRAO = { area:1, nucleo:0.52, legenda:'sombra', texto:1, curva:'forte', dur:1.3, zoom:0.3, familia:'gold', escuro:0.45, estrelas:5.6, tunel:0.8, moldura:4.2, tempo:0.8, linha:'ouro', dimCentro:false, dimMapa:'limpar', naveMin:5, naveMax:50, naveMedia:30, naveTamMin:0.5, naveTamMax:3, naveVisita:0.3, naveHeroEspera:60, naveFoge:'dispara', naveFogeDist:90 };
+const LINHAS = { ouro:'rgba(244,203,112,.38)', aco:'rgba(182,208,235,.22)', nenhuma:'transparent' };
+let cfg = Object.assign({}, PADRAO);
+
+/* cubic-bezier como função (mesmo algoritmo do CSS) */
+function bezier(x1,y1,x2,y2){
+  const cx=3*x1, bx=3*(x2-x1)-cx, ax=1-cx-bx, cy=3*y1, by=3*(y2-y1)-cy, ay=1-cy-by;
+  const sx=t=>((ax*t+bx)*t+cx)*t, sy=t=>((ay*t+by)*t+cy)*t, dx=t=>(3*ax*t+2*bx)*t+cx;
+  return x=>{ if(x<=0) return 0; if(x>=1) return 1; let t=x;
+    for(let i=0;i<8;i++){ const e=sx(t)-x, d=dx(t); if(Math.abs(e)<1e-6) break; if(Math.abs(d)<1e-6) break; t-=e/d; }
+    let lo=0, hi=1; for(let i=0;i<30 && Math.abs(sx(t)-x)>1e-6;i++){ if(sx(t)<x) lo=t; else hi=t; t=(lo+hi)/2; }
+    return sy(t); };
+}
+const ease = () => bezier(...CURVAS[cfg.curva]);
+const cssCurva = () => `cubic-bezier(${CURVAS[cfg.curva].join(',')})`;
+const regiao = id => REGIOES.find(r=>r.id===id);
+const setor = r => String(r.row*3 + r.col + 1).padStart(2,'0');
+
+/* ==========================================================================
+   MONTAGEM DO DOM
+   ========================================================================== */
+const world = $('#world'), viewport = $('#viewport');
+REGIOES.forEach(r=>{
+  const el = document.createElement('section');
+  el.className = 'region' + (r.hero ? ' region--hero' : '');
+  el.id = 'r-' + r.id; el.dataset.col = r.col; el.dataset.row = r.row;
+  el.setAttribute('aria-labelledby', 'h-' + r.id);
+  el.appendChild(Object.assign(document.createElement('div'), {className:'esmaecer'}));
+  if (r.hero) {
+    el.insertAdjacentHTML('beforeend', `<div class="region__inner">
+      <h2 id="h-${r.id}" class="sr-only" tabindex="-1">Início</h2>
+      <div class="logo pre" id="logo" role="img" translate="no" aria-label="Logo da BRAUFONET – Brazil UFO Network">
+        <div class="camada" data-prof="3"><img src="assets/logo-aro.webp" srcset="assets/logo-aro-600.webp 600w, assets/logo-aro.webp 1202w" sizes="min(92vw, 760px)" alt="" draggable="false"></div>
+        <div class="camada" data-prof="10"><img src="assets/logo-brasil.webp" srcset="assets/logo-brasil-600.webp 600w, assets/logo-brasil.webp 1202w" sizes="min(92vw, 760px)" alt="" draggable="false"></div>
+        <div class="camada" data-prof="22"><img src="assets/logo-disco.webp" srcset="assets/logo-disco-600.webp 600w, assets/logo-disco.webp 1202w" sizes="min(92vw, 760px)" alt="" draggable="false"></div>
+      </div>
+      <div class="hero-legenda fade" aria-hidden="true"><span class="hero-legenda__caixa"><span class="hl">Ufologia · Ciência<span class="sep"> · </span><span class="quebra"></span>Espiritualidade</span><span class="hl hl--ano">desde 2018</span></span></div>
+    </div>`);
+  } else {
+    el.insertAdjacentHTML('beforeend', `<div class="region__inner">
+      <div class="region__texto fade">
+        <div class="codigo">Setor ${setor(r)} · ${r.nome}</div>
+        <h2 id="h-${r.id}" tabindex="-1">${r.titulo}</h2>
+        <p class="desc">${r.desc}</p>
+      </div>
+      <div class="orbita"><svg class="fade" aria-hidden="true"><ellipse cx="50%" cy="50%" rx="44%" ry="38%"/></svg>
+        ${r.planetas.map((p,i)=>{
+          const n=r.planetas.length, ang=(-90 + (360/n)*i + (r.col===1?0:20)) * Math.PI/180;
+          const x=50+44*Math.cos(ang), y=50+38*Math.sin(ang);
+          return `<a class="planeta p-${p.cor}" href="#/${r.id}/${p.id}" ${p.anel?'data-anel':''} data-pag="${r.id}/${p.id}" style="left:${x}%;top:${y}%;--s:${p.s}px;--fd:${6+i*1.3}s">
+            <span class="planeta__esfera" aria-hidden="true"></span><span class="planeta__nome fade">${p.nome}</span></a>`;
+        }).join('')}
+      </div>
+    </div>`);
+  }
+  world.appendChild(el);
+});
+
+/* Painel */
+const commands = $('#commands');
+commands.innerHTML = PAINEL.map(b=> b.id==='#mapa'
+  ? `<button class="command" type="button" data-alvo="${b.id}" aria-pressed="false"><span class="ico" aria-hidden="true">${icone(b.ico)}</span>${b.rotulo}</button>`
+  : `<a class="command" href="#/${b.id==='inicio'?'':b.id}" data-alvo="${b.id}"><span class="ico" aria-hidden="true">${icone(b.ico)}</span>${b.rotulo}</a>`).join('');
+commands.addEventListener('click', e=>{
+  const b = e.target.closest('.command'); if(!b) return;
+  if (e.ctrlKey || e.metaKey || e.shiftKey) return;              // abrir em nova aba continua funcionando
+  e.preventDefault();
+  if (b.dataset.alvo === '#mapa') { toggleMapa(); return; }
+  navegar(b.dataset.alvo);
+});
+
+/* Mapa */
+const mapa = $('#mapa');
+mapa.innerHTML = [...REGIOES].sort((a,b)=>(a.row*3+a.col)-(b.row*3+b.col)).map(r=>
+  `<button type="button" data-alvo="${r.id}"><span class="m-cod">SETOR ${setor(r)}</span><span class="m-nome">${r.hero?'Início':r.nome}</span></button>`).join('');
+mapa.addEventListener('click', e=>{ const b=e.target.closest('button'); if(b){ fechaMapa(false); navegar(b.dataset.alvo); } });
+
+/* ==========================================================================
+   CÂMERA
+   ========================================================================== */
+let W=0, H=0;
+const cam = { x:0, y:0, s:1 };          // centro da visão em px do mundo + escala
+let atual = 'inicio', voo = null, mapaAberto = false;
+
+function medir(){
+  W = innerWidth; H = innerHeight;
+  world.style.width = 3*W + 'px'; world.style.height = 3*H + 'px';
+  REGIOES.forEach(r=>{ const el=$('#r-'+r.id); el.style.left=r.col*W+'px'; el.style.top=r.row*H+'px'; el.style.width=W+'px'; el.style.height=H+'px'; });
+  if (window.PLX) PLX.layout();
+  if (window.posicionarSombras) posicionarSombras();
+}
+function centro(r){ return { x:(r.col+.5)*W, y:(r.row+.5)*H }; }
+function aplicar(x,y,s){
+  s=Math.max(s,1/3); const hw=W/(2*s), hh=H/(2*s);                          // não deixa a borda do universo aparecer
+  x=Math.min(Math.max(x,hw),3*W-hw); y=Math.min(Math.max(y,hh),3*H-hh);
+  cam.x=x; cam.y=y; cam.s=s;
+  world.style.transform = `translate3d(${W/2 - s*x}px, ${H/2 - s*y}px, 0) scale(${s})`;
+}
+
+function voar(destX, destY, destS, dur, zoomExtra, aoChegar, opts={}){
+  if (voo) cancelAnimationFrame(voo.raf);
+  const de = { x:cam.x, y:cam.y, s:cam.s }, f = ease(), t0 = performance.now();
+  const D = { x:destX-de.x, y:destY-de.y };
+  if (efeitosReduzidos()) zoomExtra = 0;                             // efeitos desligados: voa sem afastar a câmera
+  const sMin = Math.max(1/3, Math.min(de.s, destS) - zoomExtra);
+  const residuo = PLX.residuo();                                     // deslocamento que sobrou de um voo interrompido
+  const comPlx = !opts.semParallax && dur>0 && PLX.ativo() && PLX.caminhoPronto(de, {x:destX,y:destY}, sMin);
+  if (dur <= 0) { aplicar(destX,destY,destS); PLX.voo(1,null,residuo,1); voo=null; aoChegar && aoChegar(); return; }
+  voo = { raf:0 }; let ult = 0;
+  const passo = now => {
+    if (ult) PLX.quadro(now-ult); ult = now;
+    const t = Math.min(1,(now-t0)/dur), e = f(t);
+    const s = de.s + (destS-de.s)*e - zoomExtra*Math.sin(Math.PI*t);   // afasta no pico de velocidade
+    aplicar(de.x+(destX-de.x)*e, de.y+(destY-de.y)*e, s);
+    PLX.voo(t, comPlx ? D : null, residuo, e);                          // camadas ficam para trás e alcançam na chegada
+    if (t < 1) voo.raf = requestAnimationFrame(passo); else { voo=null; PLX.fimDeAnimacao(); aoChegar && aoChegar(); }
+  };
+  voo.raf = requestAnimationFrame(passo);
+}
+
+function irPara(id, {instantaneo=false, foco=true, aoChegar=null}={}){
+  const r = regiao(id); if(!r) return;
+  const de = regiao(atual), alvo = centro(r);
+  const dist = Math.hypot(r.col-de.col, r.row-de.row);         // em setores (1, 1.41, 2, 2.83)
+  const rapido = vooRapido; vooRapido = false;                 // setas do teclado: voo curto, sem zoom
+  const dur = (instantaneo || movReduzido()) ? 0 : rapido ? 450 : cfg.dur*1000*(0.8 + 0.2*Math.max(dist,1));
+  const zoomExtra = (rapido || dist===0 || cam.s<0.99) ? 0 : cfg.zoom*Math.min(1, dist/2.4);
+  document.querySelectorAll('.region').forEach(el=>el.classList.remove('is-active'));
+  if (dur>0) world.classList.add('em-voo');
+  atual = id; marcarAtual(r);
+  voar(alvo.x, alvo.y, 1, dur, zoomExtra, ()=>{
+    world.classList.remove('em-voo');
+    const el = $('#r-'+id); el.classList.add('is-active');
+    esmaecerChegada(el, r);
+    document.querySelectorAll('.region').forEach(x=>{ x.inert = (x!==el); });
+    if (foco) $('#h-'+id).focus({preventScroll:true});
+    $('#aviso').textContent = (r.hero?'Início':r.titulo) + ', setor ' + setor(r);
+    if (r.hero) iniciaParallax();
+    PLX.preCarregar();
+    aoChegar && aoChegar();
+  });
+}
+/* Regra: escurece ao chegar; ao sair continua escuro; quando já está fora de vista
+   (na chegada ao próximo setor) volta ao normal sem animação. */
+function esmaecerChegada(el, r){
+  document.querySelectorAll('.region').forEach(x=>{
+    if (x===el || !x.classList.contains('esmaecida')) return;
+    x.classList.remove('esmaecida'); x.classList.add('limpando');            // se desfaz (a curva pode estar no campo de visão)
+    setTimeout(()=>{ x.classList.remove('limpando'); syncSombras(); }, 700);
+  });
+  el.classList.remove('limpando');
+  if (r.hero && !cfg.dimCentro) el.classList.remove('esmaecida'); else el.classList.add('esmaecida');
+  syncSombras();
+}
+/* Uma sombra por setor, numa camada própria do universo */
+const sombrasEl = Object.assign(document.createElement('div'), {className:'sombras'}); sombrasEl.setAttribute('aria-hidden','true');
+const SOMBRA = {}; REGIOES.forEach(r=>{ const d=document.createElement('div'); d.className='sombra'; sombrasEl.appendChild(d); SOMBRA[r.id]=d; });
+world.querySelector('.region').before(sombrasEl);
+function syncSombras(){ REGIOES.forEach(r=>{ const reg=$('#r-'+r.id), d=SOMBRA[r.id];
+  d.classList.toggle('on', reg.classList.contains('esmaecida')); d.classList.toggle('limpando', reg.classList.contains('limpando')); }); }
+function posicionarSombras(){
+  const baixa = H<=520, cel = W<=760, k = cfg.area;
+  // mesmos raios e centro do P6 (78%×74% a partir de 50%/46%); a diferença é que agora a sombra não é cortada no limite do setor
+  const rx = (baixa ? .88 : cel ? .96 : .78) * k, ry = (baixa ? .96 : cel ? .82 : .74) * k;
+  REGIOES.forEach(r=>{ const d=SOMBRA[r.id]; Object.assign(d.style,{left:((r.col+.5)*W - rx*W)+'px', top:((r.row+.46)*H - ry*H)+'px', width:(2*rx*W)+'px', height:(2*ry*H)+'px'}); });
+}
+window.posicionarSombras = posicionarSombras;
+function marcarAtual(r){
+  commands.querySelectorAll('.command').forEach(b=>b.setAttribute('aria-current', String(b.dataset.alvo===r.id)));
+  mapa.querySelectorAll('button').forEach(b=>b.setAttribute('aria-current', String(b.dataset.alvo===r.id)));
+  document.body.classList.toggle('no-inicio', !!r.hero);           // selo da Kupim só na tela da logo
+  trocaTexto($('#hudCod'), 'SETOR ' + setor(r)); trocaTexto($('#hudNome'), r.hero ? 'Origem' : r.nome);
+  document.querySelectorAll('.menu-item:not(.menu-item--efeitos)').forEach(b=>{
+    const cur = b.dataset.alvo===r.id; b.setAttribute('aria-current', String(cur));
+    const sm = b.querySelector('small'); if (cur && !sm) b.insertAdjacentHTML('beforeend','<small>Você está aqui</small>'); else if (!cur && sm) sm.remove();
+  });
+  const onde = $('#menuOnde'); if (onde) trocaTexto(onde, '· ' + (r.hero ? 'Início' : r.nome));
+}
+/* O nome antigo sai e o novo sobe — evita a troca seca de texto ao mudar de setor */
+function trocaTexto(el, txt){
+  if (!el || el.textContent === txt) return;
+  el.getAnimations().forEach(a=>a.cancel());
+  if (movReduzido()) { el.textContent = txt; return; }
+  el.animate([{opacity:1, transform:'none'},{opacity:0, transform:'translateY(-4px)'}], {duration:110, easing:'ease-in'}).onfinish = () => {
+    el.textContent = txt;
+    el.animate([{opacity:0, transform:'translateY(6px)'},{opacity:1, transform:'none'}], {duration:200, easing:'cubic-bezier(.23,1,.32,1)'});
+  };
+}
+viewport.addEventListener('scroll', ()=>{ viewport.scrollTop=0; viewport.scrollLeft=0; });   // segurança p/ foco
+
+/* Mapa = visão geral: a câmera se afasta até caber o universo inteiro */
+function toggleMapa(){ mapaAberto ? fechaMapa(true) : abreMapa(); }
+function abreMapa(){
+  if (paginaAberta) return;
+  mapaAberto = true; world.classList.add('em-mapa'); document.body.classList.add('mapa-aberto');
+  if (cfg.dimMapa==='limpar') { document.querySelectorAll('.region.esmaecida').forEach(x=>{ x.classList.add('limpando'); x.classList.remove('esmaecida'); }); syncSombras(); }
+  commands.querySelector('[data-alvo="#mapa"]').setAttribute('aria-pressed','true');
+  // primeiro a câmera se afasta até ver o universo inteiro; só depois o grid com os nomes aparece (fade in)
+  voar(1.5*W, 1.5*H, 1/3, movReduzido()?0:cfg.dur*900, 0, ()=>{
+    if (!mapaAberto) return;
+    mapa.classList.add('aberto'); mapa.setAttribute('aria-hidden','false');
+    mapa.querySelector('[aria-current="true"]')?.focus({preventScroll:true});
+  });
+}
+function fechaMapa(voltar){
+  mapaAberto = false; world.classList.remove('em-mapa'); document.body.classList.remove('mapa-aberto'); mapa.classList.remove('aberto'); mapa.setAttribute('aria-hidden','true');
+  commands.querySelector('[data-alvo="#mapa"]').setAttribute('aria-pressed','false');
+  if (voltar) { const c=centro(regiao(atual)); voar(c.x,c.y,1,movReduzido()?0:cfg.dur*900,0,()=>{ const r=regiao(atual), el=$('#r-'+atual);
+      if (!el.classList.contains('esmaecida')) esmaecerChegada(el, r); $('#h-'+atual).focus({preventScroll:true}); }); }
+}
+
+/* ==========================================================================
+   ROTAS (#/eventos, #/eventos/realizados) — voltar do navegador funciona
+   ========================================================================== */
+let vooRapido = false;
+function navegar(id, opt={}){
+  if (id===atual && !lerRota().pag) { if (mapaAberto) fechaMapa(true); return; }   // hash igual não dispara hashchange
+  vooRapido = !!opt.rapido;
+  location.hash = id==='inicio' ? '#/' : '#/'+id;
+}
+function lerRota(){
+  const p = location.hash.replace(/^#\/?/,'').split('/').filter(Boolean);
+  if (p[0]==='info' && p[1]) return { reg:null, pag:'info/'+p[1] };
+  const reg = p[0] && regiao(p[0]) ? p[0] : 'inicio';
+  return { reg, pag: (p[1] && regiao(p[0])) ? p[0]+'/'+p[1] : null };
+}
+let primeira = true;
+function rotaMudou(){
+  const {reg, pag} = lerRota();
+  fecharMenu(false);
+  if (mapaAberto) fechaMapa(false);
+  const inst = primeira; primeira = false;
+
+  // 1) a rota mudou e havia uma página aberta: fecha (com afastamento se volta ao mesmo setor)
+  if (paginaAberta && paginaAberta !== pag) {
+    const antiga = paginaAberta, regAntiga = antiga.split('/')[0];
+    paginaAberta = null;
+    if (!pag && reg === regAntiga && paginaComZoom) { paginaComZoom = false; zoomSair(antiga); return; }
+    paginaComZoom = false; ocultarPg();
+  }
+  if (pag && pag === paginaAberta) return;
+
+  // 2) páginas de informação (Privacidade, Termos...): abrem por esmaecimento, a câmera não se move
+  if (pag && pag.startsWith('info/')) {
+    if (inst) irPara(atual, {instantaneo:true, foco:false});
+    if (montarPagina(pag)) { paginaAberta = pag; mostrarPg(); }
+    return;
+  }
+  // 3) setor (e talvez a página de um planeta dele)
+  const abrir = () => {
+    if (!pag || !montarPagina(pag)) return;
+    paginaAberta = pag;
+    if (inst) { mostrarPg(); return; }                 // link direto: abre sem animação
+    if (cam.s > 1.2) { paginaComZoom = true; mostrarPg(); return; }   // já está perto do planeta (voltando de Termos, p.ex.)
+    paginaComZoom = true;
+    zoomEntrar(pag, ()=>{ if (paginaAberta === pag) mostrarPg(); });  // a rota pode ter mudado durante a aproximação
+  };
+  if (reg !== atual || inst) irPara(reg, {instantaneo:inst, foco:!inst && !pag, aoChegar:abrir});
+  else if (pag) abrir();
+  else if (!mapaAberto && Math.abs(cam.s-1)>0.01) { const c=centro(regiao(reg)); voar(c.x,c.y,1,cfg.dur*800,0); }
+}
+addEventListener('hashchange', rotaMudou);
+
+/* ==========================================================================
+   PÁGINAS — o visitante voa até o planeta e a página abre, com URL própria
+   ========================================================================== */
+const pg = $('#pg');
+let paginaAberta = null, paginaPush = false, paginaComZoom = false;
+const tituloOriginal = document.title;
+const DUR_ZOOM = 760;
+const INFO = {
+  privacidade:{ nome:'Política de privacidade', html:`<p>Texto provisório. Aqui a BRAUFONET explica quais dados coleta (cadastro de membro, avisos, inscrições), para quê, por quanto tempo guarda, com quem compartilha e como o visitante pode pedir acesso, correção ou exclusão, conforme a LGPD.</p><p class="nota">Página exigida pelo RNF-05. O texto final deve ser validado juridicamente.</p>` },
+  termos:{ nome:'Termos de uso', html:`<p>Texto provisório. Regras de uso do site, da loja e das inscrições: responsabilidades, cancelamento e reembolso de ingressos, direitos sobre fotos e vídeos dos eventos.</p><p class="nota">Texto final a validar com a BRAUFONET.</p>` },
+  transparencia:{ nome:'Transparência', html:`<ul class="lista-contato"><li><b>Razão social:</b> Rede Brasileira de Ufologia – BRAUFONET</li><li><b>CNPJ:</b> 68.162.826/0001-90 · associação privada</li><li><b>Presidente:</b> Alexandre Roberto Bezerra Lauzid</li><li><b>Quem organiza, vende e recebe em cada evento:</b> a definir</li></ul><p class="nota">RF-71. Estatuto, políticas e a relação entre as entidades entram aqui após validação.</p>` },
+};
+function dadosPagina(chave){
+  const [a,b] = chave.split('/');
+  if (a==='info') return INFO[b] ? { titulo:INFO[b].nome, setorTxt:'Informações', reg:null, html:INFO[b].html, cor:'gelo' } : null;
+  const r = regiao(a), pl = r && r.planetas && r.planetas.find(x=>x.id===b); if (!pl) return null;
+  const def = PAGINAS[chave] || (INFO[b] ? {html:INFO[b].html} : {});
+  const html = typeof def.html==='function' ? def.html() : (def.html || `<p>Conteúdo desta página entra aqui.</p><p class="nota">Página provisória do protótipo — conteúdo conforme o documento de requisitos.</p>`);
+  return { titulo:pl.nome, setorTxt:`Setor ${setor(r)} · ${r.nome}`, reg:r, html, cor:pl.cor };
+}
+function rodapeHTML(){ return `<footer class="rodape">
+  <p><b><span translate="no">BRAUFONET</span> – Rede Brasileira de Ufologia</b> · CNPJ 68.162.826/0001-90 · Recife/PE</p>
+  <nav aria-label="Informações legais e contato"><a href="#/info/privacidade">Privacidade</a><a href="#/info/termos">Termos de uso</a><a href="#/info/transparencia">Transparência</a><a href="https://wa.me/5581994473390" target="_blank" rel="noopener">WhatsApp</a><a href="mailto:braufonet@gmail.com">E-mail</a><a href="https://www.youtube.com/@BRAUFONET" target="_blank" rel="noopener">YouTube</a><a href="https://www.instagram.com/braufonet/" target="_blank" rel="noopener">Instagram</a></nav>
+</footer>`; }
+function montarPagina(chave){
+  const d = dadosPagina(chave); if (!d) return false;
+  const migalha = d.reg ? `<a href="#/">Início</a> › <a href="#/${d.reg.id}">${d.reg.nome}</a> › ${d.titulo}` : `<a href="#/">Início</a> › ${d.titulo}`;
+  pg.className = 'pg p-' + d.cor + (pg.classList.contains('aberta') ? ' aberta' : '');
+  pg.innerHTML = `<header class="pg__topo"><button class="voltar" type="button" id="pgVoltar"><svg class="ic" aria-hidden="true" style="vertical-align:-.25em"><use href="#i-voltar"/></svg> Voltar ao universo</button><nav class="migalha" aria-label="Você está em">${migalha}</nav></header>
+    <div class="pg__horizonte" aria-hidden="true"></div>
+    <article class="pg__conteudo"><p class="pg__setor">${d.setorTxt}</p><h1 id="pgTitulo" tabindex="-1">${d.titulo}</h1>${d.html}${rodapeHTML()}</article>`;
+  pg.querySelectorAll('.linha-tempo li, .grade-itens li').forEach((li,i)=>li.style.setProperty('--i', i));
+  $('#pgVoltar').onclick = fecharPaginaPeloUsuario;
+  document.title = `${d.titulo} · ${d.reg ? d.reg.titulo : 'Informações'} — BRAUFONET`;
+  return true;
+}
+function mostrarPg(){
+  pg.classList.add('aberta','entrando'); pg.setAttribute('aria-hidden','false'); pg.scrollTop = 0; ultimoScroll = 0;
+  setTimeout(()=>pg.classList.remove('entrando'), 1400);
+  viewport.inert = true; mapa.inert = true; $('.hud').style.visibility = 'hidden'; document.body.classList.add('pg-aberta');
+  $('#pgTitulo').focus({preventScroll:true});
+  $('#aviso').textContent = 'Página aberta: ' + $('#pgTitulo').textContent;
+}
+function ocultarPg(){
+  pg.classList.remove('aberta'); pg.setAttribute('aria-hidden','true'); document.body.classList.remove('menu-recolhido');
+  viewport.inert = false; mapa.inert = false; $('.hud').style.visibility = ''; document.body.classList.remove('pg-aberta');
+  document.title = tituloOriginal;
+}
+let ultimoScroll = 0;
+pg.addEventListener('scroll', ()=>{                                   // no celular, o Menu recolhe ao descer e volta ao subir
+  const y = pg.scrollTop;
+  if (y > ultimoScroll + 8 && y > 120) document.body.classList.add('menu-recolhido');
+  else if (y < ultimoScroll - 8) document.body.classList.remove('menu-recolhido');
+  ultimoScroll = y;
+}, {passive:true});
+function fecharPaginaPeloUsuario(){
+  if (paginaPush) { paginaPush = false; history.back(); }
+  else { const a = paginaAberta || ''; location.hash = a.startsWith('info/') ? '#/' + (atual==='inicio'?'':atual) : '#/' + a.split('/')[0]; }
+}
+world.addEventListener('click', e=>{
+  const p = e.target.closest('.planeta'); if (!p || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  e.preventDefault(); paginaPush = true; location.hash = '#/' + p.dataset.pag;
+});
+function corDoPlaneta(el){ return [...el.classList].find(c=>c.startsWith('p-')); }
+function clonePlaneta(cor, r){
+  const c = document.createElement('div'); c.className = 'zoom-planeta ' + cor;
+  Object.assign(c.style, {left:r.left+'px', top:r.top+'px', width:r.width+'px', height:r.height+'px'});
+  document.body.appendChild(c); return c;
+}
+/* Entrar: a câmera aproxima um pouco (o fundo) e o planeta cresce muito mais — profundidade */
+function zoomEntrar(chave, pronto){
+  const pl = document.querySelector(`.planeta[data-pag="${chave}"]`);
+  const esf = pl && pl.querySelector('.planeta__esfera'), r = esf && esf.getBoundingClientRect();
+  if (!r || !r.width || movReduzido() || efeitosReduzidos()) { pronto(); return; }
+  const cx = r.left + r.width/2, cy = r.top + r.height/2, k = Math.hypot(W,H)*1.06 / r.width;
+  const clone = clonePlaneta(corDoPlaneta(pl), r); esf.style.visibility = 'hidden';
+  voar(cam.x + (cx-W/2)/cam.s, cam.y + (cy-H/2)/cam.s, 1.8, DUR_ZOOM, 0, null, {semParallax:true});
+  clone.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${W/2-cx}px,${H/2-cy}px) scale(${k})`}],
+    {duration:DUR_ZOOM, easing:cssCurva(), fill:'forwards'}).onfinish = () => {
+      pronto(); setTimeout(()=>{ clone.remove(); esf.style.visibility = ''; }, 320);
+    };
+}
+/* Sair: a página some revelando o planeta gigante, que encolhe de volta ao lugar */
+function zoomSair(chave){
+  const pl = document.querySelector(`.planeta[data-pag="${chave}"]`), reg = regiao(chave.split('/')[0]), c = centro(reg);
+  const esf = pl && pl.querySelector('.planeta__esfera'), r = esf && esf.getBoundingClientRect();
+  if (!r || !r.width || movReduzido() || efeitosReduzidos()) { ocultarPg(); voar(c.x,c.y,1,0,0); pl && pl.focus({preventScroll:true}); return; }
+  const wx = cam.x + (r.left + r.width/2 - W/2)/cam.s, wy = cam.y + (r.top + r.height/2 - H/2)/cam.s;
+  const size = r.width / cam.s, sx = W/2 + (wx - c.x), sy = H/2 + (wy - c.y);
+  const box = {left:sx-size/2, top:sy-size/2, width:size, height:size}, k = Math.hypot(W,H)*1.06 / size;
+  const clone = clonePlaneta(corDoPlaneta(pl), box); esf.style.visibility = 'hidden';
+  clone.style.transform = `translate(${W/2-sx}px,${H/2-sy}px) scale(${k})`;
+  ocultarPg();
+  voar(c.x, c.y, 1, DUR_ZOOM, 0, null, {semParallax:true});
+  clone.animate([{transform:`translate(${W/2-sx}px,${H/2-sy}px) scale(${k})`},{transform:'translate(0,0) scale(1)'}],
+    {duration:DUR_ZOOM, easing:cssCurva(), fill:'forwards'}).onfinish = () => { clone.remove(); esf.style.visibility = ''; pl.focus({preventScroll:true}); };
+}
+
+/* ==========================================================================
+   TECLADO E TOQUE
+   ========================================================================== */
+addEventListener('keydown', e=>{
+  if (e.key==='Escape') { if (menuAberto) fecharMenu(); else if (paginaAberta) fecharPaginaPeloUsuario(); else if (mapaAberto) fechaMapa(true); return; }
+  if (menuAberto && e.key==='Tab') {                                   // foco preso no menu aberto
+    const f = [...menuLista.querySelectorAll('.menu-item'), menuBtn], i = f.indexOf(document.activeElement);
+    e.preventDefault(); f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus(); return;
+  }
+  if (paginaAberta || menuAberto || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if (e.key==='m' || e.key==='M') { toggleMapa(); return; }
+  const d = {ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key]; if(!d || mapaAberto) return;
+  const r = regiao(atual), v = REGIOES.find(x=>x.col===r.col+d[0] && x.row===r.row+d[1]);
+  if (v) { e.preventDefault(); navegar(v.id, {rapido:true}); }
+});
+/* Toque: o universo acompanha o dedo; ao soltar decide pela distância ou pela velocidade */
+let arrasto = null, fimArrasto = 0;
+viewport.addEventListener('pointerdown', e=>{
+  if (e.pointerType!=='touch' || paginaAberta || mapaAberto || menuAberto || voo) return;
+  const t = performance.now();
+  arrasto = {id:e.pointerId, x0:e.clientX, y0:e.clientY, cx:cam.x, cy:cam.y, ativo:false, lx:e.clientX, ly:e.clientY, lt:t, vx:0, vy:0};
+});
+viewport.addEventListener('pointermove', e=>{
+  if (!arrasto || e.pointerId!==arrasto.id) return;
+  const dx = e.clientX-arrasto.x0, dy = e.clientY-arrasto.y0;
+  if (!arrasto.ativo) { if (Math.hypot(dx,dy) < 10) return; arrasto.ativo = true; try { viewport.setPointerCapture(e.pointerId); } catch(_){} }
+  const t = performance.now(), dt = Math.max(1, t-arrasto.lt);
+  arrasto.vx = (e.clientX-arrasto.lx)/dt; arrasto.vy = (e.clientY-arrasto.ly)/dt; arrasto.lx=e.clientX; arrasto.ly=e.clientY; arrasto.lt=t;
+  const lim = (v, a, b) => Math.min(Math.max(v, a), b);                      // no máximo um setor de distância
+  aplicar(lim(arrasto.cx-dx, arrasto.cx-W, arrasto.cx+W), lim(arrasto.cy-dy, arrasto.cy-H, arrasto.cy+H), 1);
+});
+function soltar(e){
+  if (!arrasto || e.pointerId!==arrasto.id) return;
+  const a = arrasto; arrasto = null; if (!a.ativo) return;
+  fimArrasto = performance.now();
+  const dx = a.lx-a.x0, dy = a.ly-a.y0, r = regiao(atual);
+  const dir = (d, v, tam) => (d < -tam*0.22 || (v < -0.45 && d < -24)) ? 1 : (d > tam*0.22 || (v > 0.45 && d > 24)) ? -1 : 0;
+  let c = dir(dx, a.vx, W), l = dir(dy, a.vy, H);
+  if (Math.abs(dx) > Math.abs(dy)*1.8) l = 0; if (Math.abs(dy) > Math.abs(dx)*1.8) c = 0;
+  const v = (c||l) && REGIOES.find(x=>x.col===r.col+c && x.row===r.row+l);
+  if (v) navegar(v.id);
+  else { const k = centro(r); voar(k.x, k.y, 1, movReduzido()?0:320, 0); }   // volta ao lugar
+}
+viewport.addEventListener('pointerup', soltar);
+viewport.addEventListener('pointercancel', soltar);
+world.addEventListener('click', e=>{ if (performance.now()-fimArrasto < 80) { e.preventDefault(); e.stopPropagation(); } }, true);   // arrasto não vira clique
+
+/* ==========================================================================
+   LOGO: montagem + parallax (o céu é o próprio fundo do universo)
+   ========================================================================== */
+const camadas = [...document.querySelectorAll('#logo .camada')];
+let px=0, py=0, tx=0, ty=0, parallaxRaf=0, montada=false;
+addEventListener('pointermove', e=>{ if (e.pointerType==='touch') return; tx=(e.clientX/W-.5)*2; ty=(e.clientY/H-.5)*2; });
+function iniciaParallax(){
+  if (efeitosReduzidos() || parallaxRaf || !montada) return;
+  const loop = now => {
+    px += (tx-px)*0.06; py += (ty-py)*0.06;
+    const bob = Math.sin(now/1600);
+    camadas.forEach(c=>{ const k=+c.dataset.prof; c.style.transform = `translate3d(${px*k}px, ${py*k + (k>20?bob*5:0)}px, 0)`; });
+    parallaxRaf = atual==='inicio' ? requestAnimationFrame(loop) : 0;
+  };
+  parallaxRaf = requestAnimationFrame(loop);
+}
+function montarLogo(){
+  const [aro, brasil, disco] = camadas.map(c=>c.firstElementChild);
+  const logo = $('#logo'); montada = false;
+  entradaPainel();
+  if (movReduzido()) { logo.classList.remove('pre'); montada = true; return; }
+  if (efeitosReduzidos()) { logo.classList.remove('pre'); logo.animate([{opacity:0},{opacity:1}],{duration:600,easing:'ease-out'}); montada = true; return; }
+  const o = {fill:'backwards'};
+  aro.animate([{opacity:0,transform:'scale(.9)',filter:'blur(6px)'},{opacity:1,transform:'none',filter:'blur(0)'}],{...o,duration:1100,easing:'cubic-bezier(.16,1,.3,1)'});
+  brasil.animate([{opacity:0,transform:'translateY(9%)'},{opacity:1,transform:'none'}],{...o,duration:1200,delay:450,easing:'cubic-bezier(.16,1,.3,1)'});
+  disco.animate([{opacity:0,transform:'translate(70%,-95%) scale(.35) rotate(-12deg)'},{opacity:1,transform:'translate(14%,-18%) scale(.8) rotate(-4deg)',offset:.55},{opacity:1,transform:'none'}],
+    {...o,duration:cfg.dur*1000*1.35,delay:900,easing:cssCurva()}).onfinish = ()=>{ montada = true; if (atual==='inicio') iniciaParallax(); };
+  logo.classList.remove('pre');
+}
+
+/* ==========================================================================
+   APLICA OS AJUSTES (valores de PADRAO, ou os que o index_aux.html enviar)
+   ========================================================================== */
+let textoAplicado = null;
+function aplicaCfg(){
+  $('#painel').className = 'painel fam-' + cfg.familia;
+  const B=document.body.style;
+  B.setProperty('--nucleo', (cfg.nucleo*100)+'%');
+  if (window.posicionarSombras) posicionarSombras();
+  document.body.dataset.legenda = cfg.legenda;
+  document.documentElement.style.setProperty('--escala-texto', cfg.texto);
+  B.setProperty('--b', cfg.escuro); B.setProperty('--c', cfg.estrelas); B.setProperty('--t', cfg.tunel);
+  if (innerWidth>760) B.setProperty('--m', `clamp(0px,${cfg.moldura}vmin,80px)`); else B.removeProperty('--m');
+  B.setProperty('--td', cfg.tempo+'s'); B.setProperty('--linha', LINHAS[cfg.linha] || LINHAS.ouro);
+  const h=$('#r-inicio'); if (atual==='inicio' && h && h.classList.contains('is-active')) { h.classList.toggle('esmaecida', cfg.dimCentro); if (window.syncSombras) syncSombras(); }
+  if (textoAplicado!==null && textoAplicado!==cfg.texto) { medir(); const c=centro(regiao(atual)); aplicar(c.x,c.y,1); }
+  textoAplicado = cfg.texto;
+}
+addEventListener('resize', ()=>aplicaCfg());
+aplicaCfg();
+
+/* Ponte com o index_aux.html: só funciona quando este arquivo está aberto DENTRO dele.
+   Aberto direto (o site de verdade), nada aqui é usado; apagar o index_aux não afeta o site. */
+const EMBUTIDO = window.parent !== window;
+function avisaAux(m){ if (EMBUTIDO) { try { parent.postMessage(m, '*'); } catch(e){} } }
+if (EMBUTIDO) addEventListener('message', e=>{
+  if (e.source !== window.parent) return;
+  const d = e.data; if (!d || typeof d !== 'object') return;
+  if (d.tipo==='bn-ajustes' && d.cfg && typeof d.cfg==='object') {
+    for (const k in PADRAO) if (k in d.cfg && typeof d.cfg[k]===typeof PADRAO[k]) cfg[k] = d.cfg[k];
+    aplicaCfg();
+  } else if (d.tipo==='bn-nave') {
+    if (window.NAVE) NAVE.agora(d.modo);
+  } else if (d.tipo==='bn-logo') {
+    if (atual!=='inicio') navegar('inicio'); setTimeout(montarLogo, atual==='inicio'?0:cfg.dur*1300);
+  }
+});
+avisaAux({tipo:'bn-pronto', padrao:PADRAO, familias:FAMILIAS});
+
+/* ==========================================================================
+   REDUZIR EFEITOS (preferência do visitante, salva para as próximas visitas)
+   ========================================================================== */
+/* Botão "Fundo em movimento": acende (luz azul no ícone vazado) quando o parallax está ligado.
+   A escolha fica salva no navegador. Sem escolha, o site decide sozinho (aparelho, conexão, sistema). */
+const plxBtn = $('#plxBtn');
+function atualizaPlxBtn(){
+  const on = !efeitosReduzidos();
+  plxBtn.setAttribute('aria-pressed', String(on));
+  plxBtn.dataset.dica = on ? 'Efeitos ligados' : 'Efeitos desligados';
+  document.body.classList.toggle('efeitos-off', !on);
+}
+plxBtn.onclick = () => {
+  const ligar = efeitosReduzidos();
+  try { localStorage.setItem('bn-efeitos-pesados', ligar ? 'on' : 'off'); if (ligar) sessionStorage.removeItem('bn-plx-off'); } catch(e){}
+  if (ligar) { PLX.avaliar(); if (atual==='inicio') iniciaParallax(); }
+  else { PLX.desligar('Escolha do visitante: efeitos desligados', false); cancelAnimationFrame(parallaxRaf); parallaxRaf = 0; camadas.forEach(c=>c.style.transform=''); }
+  atualizaPlxBtn();
+  $('#aviso').textContent = plxBtn.dataset.dica;
+};
+function aplicaMovimento(){ const r = movReduzido(); document.documentElement.classList.toggle('mov-reduzido', r); document.body.classList.toggle('sem-flutuar', r); }
+reduz.addEventListener && reduz.addEventListener('change', ()=>{ aplicaMovimento(); PLX.avaliar(); });
+
+/* Entrada do painel no Hero: o console sobe e os botões aparecem um a um */
+function entradaPainel(){
+  document.body.classList.remove('pre-painel');
+  if (movReduzido() || atual!=='inicio') return;
+  const ease = 'cubic-bezier(.23,1,.32,1)', o = {fill:'backwards'};
+  const rack = $('.rack'), btns = [...commands.children];
+  if (getComputedStyle($('#painel')).display !== 'none') {
+    rack.animate([{transform:'translateY(110%)',opacity:0},{transform:'none',opacity:1}],{...o,duration:650,delay:900,easing:ease});
+    btns.forEach((b,i)=>b.animate([{opacity:0,transform:'translateY(18px)'},{opacity:1,transform:'none'}],{...o,duration:420,delay:1150+i*60,easing:ease}));
+  } else {
+    menuBtn.animate([{transform:'translate(-50%,160%)',opacity:0},{transform:'translate(-50%,0)',opacity:1}],{...o,duration:650,delay:1000,easing:ease});
+  }
+}
+
+/* ==========================================================================
+   FUNDO EM CAMADAS — parallax adaptativo
+   Começa sempre no estático (soma das camadas). Só liga com sinais favoráveis +
+   teste curto de desempenho. Monitora os voos e volta ao estático se cair.
+   ========================================================================== */
+const PLX = (()=>{
+  const CAM = ['fundo','nebulosa','estrelas'];
+  const K = { fundo:.10, nebulosa:.06, estrelas:.03 };          // quanto cada camada "fica para trás" no voo
+  const DRIFT = { fundo:3, nebulosa:7, estrelas:12 };           // deslocamento com o mouse, parado (px)
+  const q = new URLSearchParams(location.search), forca = q.get('fundo'), lento = q.get('lento')==='1';
+  let modo='estatico', motivo='aguardando o fim da intro', estado=Array(9).fill('nada'), res=960;
+  let vooOff={x:0,y:0}, drift={x:0,y:0}, alvo={x:0,y:0}, raf=0, ult=0, frames=[], ruins=0;
+  const rect={x:0,y:0,w:0,h:0};
+  const box = document.createElement('div'); box.className='planos'; box.setAttribute('aria-hidden','true');
+  const planos = CAM.map(k=>{
+    const p = document.createElement('div'); p.className='plano plano--'+k;
+    for (let i=0;i<9;i++){ const im=document.createElement('img'); im.className='tile'; im.alt=''; im.decoding='async';
+      im.style.left=(i%3)*33.3333+'%'; im.style.top=Math.floor(i/3)*33.3333+'%'; p.appendChild(im); }
+    box.appendChild(p); return p;
+  });
+  world.prepend(box);
+  const ativo = () => modo==='parallax';
+  function status(){ console.info('[fundo]', modo, '—', motivo); if (window.atualizaPlxBtn) atualizaPlxBtn(); avisaAux({tipo:'bn-status', ativo:ativo(), texto:motivo}); }
+  function layout(){                                            // mesmo enquadramento do "center/cover" do fundo estático
+    const sc = Math.max(3*W/5760, 3*H/3240); rect.w=5760*sc; rect.h=3240*sc; rect.x=(3*W-rect.w)/2; rect.y=(3*H-rect.h)/2;
+    Object.assign(box.style,{left:rect.x+'px',top:rect.y+'px',width:rect.w+'px',height:rect.h+'px'}); aplicarPlanos();
+  }
+  function carregar(i){
+    if (estado[i]!=='nada' || !ativo()) return Promise.resolve();
+    estado[i]='carregando';
+    const imgs = planos.map(p=>p.children[i]), n = String(i+1).padStart(2,'0');
+    imgs.forEach((im,j)=>{ im.src = `assets/camadas/${res}/${n}-${CAM[j]}.webp`; });
+    return Promise.all(imgs.map(im=>im.decode())).then(()=>{
+      if (!ativo()) return; estado[i]='pronto'; imgs.forEach(im=>im.classList.add('pronto'));   // igual ao estático: troca invisível
+    }).catch(()=>{ estado[i]='erro'; });
+  }
+  function preCarregar(){                                        // setor atual primeiro; vizinhos diretos quando o navegador estiver ocioso
+    if (!ativo()) return;
+    const r = regiao(atual), l = [r.row*3+r.col];
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dc,dr])=>{ const c=r.col+dc, rr=r.row+dr; if (c>=0&&c<3&&rr>=0&&rr<3) l.push(rr*3+c); });
+    const ocioso = window.requestIdleCallback || (f=>setTimeout(f,400));
+    // depois: os demais quadros, do mais próximo ao mais distante, só quando o navegador estiver ocioso
+    const resto = [0,1,2,3,4,5,6,7,8].filter(i=>!l.includes(i)).sort((a,b)=>Math.hypot(a%3-r.col, (a/3|0)-r.row) - Math.hypot(b%3-r.col, (b/3|0)-r.row));
+    carregar(l[0]).then(()=>Promise.all(l.slice(1).map(i=>new Promise(ok=>ocioso(()=>carregar(i).then(ok))))))
+      .then(()=>resto.forEach(i=>ocioso(()=>carregar(i), {timeout:4000})));
+  }
+  function caminhoPronto(de, para, sMin){                         // todos os quadros que vão aparecer no voo já carregaram?
+    const hw=W/(2*sMin), hh=H/(2*sMin), tw=rect.w/3, th=rect.h/3;
+    const x0=Math.min(de.x,para.x)-hw, x1=Math.max(de.x,para.x)+hw, y0=Math.min(de.y,para.y)-hh, y1=Math.max(de.y,para.y)+hh, l=[];
+    for (let r=0;r<3;r++) for (let c=0;c<3;c++){ const tx=rect.x+c*tw, ty=rect.y+r*th; if (tx<x1 && tx+tw>x0 && ty<y1 && ty+th>y0) l.push(r*3+c); }
+    l.forEach(i=>carregar(i));
+    return l.every(i=>estado[i]==='pronto');                      // se não, este voo acontece sem parallax (sem emendas)
+  }
+  function aplicarPlanos(){
+    const s=cam.s, hw=W/(2*s), hh=H/(2*s);
+    planos.forEach((p,j)=>{ const k=CAM[j];
+      let ox = vooOff.x*K[k] + drift.x*DRIFT[k], oy = vooOff.y*K[k] + drift.y*DRIFT[k];
+      ox = Math.min(Math.max(ox, cam.x+hw-(rect.x+rect.w)), cam.x-hw-rect.x);   // nunca revela a borda da imagem
+      oy = Math.min(Math.max(oy, cam.y+hh-(rect.y+rect.h)), cam.y-hh-rect.y);
+      p.style.transform = `translate3d(${ox.toFixed(1)}px,${oy.toFixed(1)}px,0)`;
+    });
+  }
+  const residuo = () => ({x:vooOff.x, y:vooOff.y});
+  function voo(t, D, r0, e){
+    if (!ativo()) return;
+    const a = Math.sin(Math.PI*t);
+    vooOff.x = (r0 ? r0.x*(1-e) : 0) + (D ? D.x*a : 0);
+    vooOff.y = (r0 ? r0.y*(1-e) : 0) + (D ? D.y*a : 0);
+    aplicarPlanos();
+  }
+  function quadro(dt){
+    if (!ativo() || document.hidden) return;
+    if (lento) { const t=performance.now(); while (performance.now()-t < 40) {} }   // ?lento=1 simula aparelho fraco
+    frames.push(dt);
+  }
+  function fimDeAnimacao(){
+    if (!ativo()) { frames=[]; return; }
+    const f = frames.slice(2); frames = [];
+    if (f.length < 15) return;
+    const ruim = f.filter(d=>d>34).length / f.length;
+    if (ruim > 0.25) { if (++ruins >= 2) desligar(`Queda sustentada de desempenho (${Math.round(ruim*100)}% dos quadros abaixo de 30 fps em ${ruins} animações seguidas)`, true); }
+    else ruins = 0;
+  }
+  function loopDrift(now){
+    if (ult) quadro(now-ult); ult = now;
+    drift.x += (alvo.x-drift.x)*0.06; drift.y += (alvo.y-drift.y)*0.06;
+    if (!voo) aplicarPlanos();
+    if (ativo() && Math.abs(alvo.x-drift.x)+Math.abs(alvo.y-drift.y) > 0.002) raf = requestAnimationFrame(loopDrift);
+    else { raf = 0; ult = 0; fimDeAnimacao(); }
+  }
+  addEventListener('pointermove', e=>{
+    if (e.pointerType!=='mouse' || !ativo() || efeitosReduzidos() || document.hidden) return;
+    alvo.x = -(e.clientX/W-.5)*2; alvo.y = -(e.clientY/H-.5)*2;
+    if (!raf) raf = requestAnimationFrame(loopDrift);
+  });
+  document.addEventListener('visibilitychange', ()=>{ if (document.hidden) { cancelAnimationFrame(raf); raf=0; ult=0; frames=[]; } });
+  function sinais(){
+    if (prefParallax()==='off') return {ok:false, msg:'Escolha do visitante: efeitos desligados'};
+    if (reduz.matches) return {ok:false, msg:'O sistema pede movimento reduzido'};
+    if (matchMedia('(prefers-reduced-data: reduce)').matches) return {ok:false, msg:'O sistema pede economia de dados'};
+    const c = navigator.connection;
+    if (c) {
+      if (c.saveData) return {ok:false, msg:'Economia de dados ativada'};
+      if (/^(slow-2g|2g|3g)$/.test(c.effectiveType||'')) return {ok:false, msg:`Conexão lenta (${c.effectiveType})`};
+      if (c.downlink && c.downlink < 1.5) return {ok:false, msg:`Conexão lenta (${c.downlink} Mb/s)`};
+    }
+    if (navigator.deviceMemory && navigator.deviceMemory < 4) return {ok:false, leve:true, msg:`Pouca memória (${navigator.deviceMemory} GB)`};
+    if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) return {ok:false, leve:true, msg:`Processador com ${navigator.hardwareConcurrency} núcleos`};
+    const parcial = !c || !navigator.deviceMemory;
+    return {ok:true, parcial, msg: parcial ? 'O navegador não informa rede/memória (decisão conservadora pelo teste)' : `Sinais favoráveis (${c.effectiveType}, ${navigator.deviceMemory} GB)`};
+  }
+  function teste(limite, cb){                                     // ~50 quadros; mede o percentil 90 do tempo entre quadros
+    const d=[]; let u=0, n=0;
+    const f = now => { if (u) { if (lento) { const t=performance.now(); while (performance.now()-t < 40) {} } d.push(now-u); } u=now;
+      if (++n < 50) requestAnimationFrame(f); else { d.sort((a,b)=>a-b); const p90=Math.round(d[Math.floor(d.length*.9)]); cb(p90<=limite, p90); } };
+    requestAnimationFrame(f);
+  }
+  function ligar(msg){
+    modo='parallax'; motivo=msg; ruins=0;
+    const celular = matchMedia('(pointer:coarse)').matches && Math.min(W,H) < 600;
+    res = (!celular && W*(devicePixelRatio||1) > 1000) ? 1920 : 960;
+    vooOff={x:0,y:0}; drift={x:0,y:0}; aplicarPlanos();              // alinha com a câmera atual antes de aparecer
+    document.body.classList.add('parallax-on'); status(); preCarregar();
+    const c = navigator.connection;
+    if (c && c.addEventListener) c.addEventListener('change', ()=>{ if (ativo() && (c.saveData || /^(slow-2g|2g|3g)$/.test(c.effectiveType||''))) desligar('A conexão ficou lenta ou a economia de dados foi ativada', true); });
+  }
+  function desligar(msg, porDesempenho){
+    if (porDesempenho) { try { sessionStorage.setItem('bn-plx-off', msg); } catch(e){} document.body.classList.add('leve'); }   // não volta a ligar nesta visita
+    const eraAtivo = ativo(); modo='estatico'; motivo=msg; status();
+    if (!eraAtivo) return;
+    const fim = () => {
+      const t0=performance.now(), d0={x:drift.x,y:drift.y}, v0={x:vooOff.x,y:vooOff.y};
+      const anim = now => { const k=Math.min(1,(now-t0)/350);            // camadas voltam ao alinhamento exato antes de sumir
+        drift.x=d0.x*(1-k); drift.y=d0.y*(1-k); vooOff.x=v0.x*(1-k); vooOff.y=v0.y*(1-k); aplicarPlanos();
+        if (k<1) requestAnimationFrame(anim);
+        else { document.body.classList.remove('parallax-on');
+          setTimeout(()=>{ if (!ativo()) { planos.forEach(p=>{ p.style.transform=''; [...p.children].forEach(im=>{ im.classList.remove('pronto'); im.removeAttribute('src'); }); }); estado=Array(9).fill('nada'); } }, 600); } };
+      requestAnimationFrame(anim);
+    };
+    const esperar = () => voo ? requestAnimationFrame(esperar) : fim();   // nunca no meio de um voo
+    esperar();
+  }
+  function avaliar(){
+    if (forca==='estatico') { motivo='Forçado por ?fundo=estatico'; modo='estatico'; status(); return; }
+    if (forca==='parallax') { ligar('Forçado por ?fundo=parallax (o monitor de desempenho continua ativo)'); return; }
+    if (prefParallax()==='on' && !sessionStorage.getItem('bn-plx-off')) { ligar('Escolha do visitante: efeitos ligados (o monitor de desempenho continua ativo)'); return; }
+    if (prefParallax()==='off') { motivo='Escolha do visitante: efeitos desligados'; status(); return; }
+    let off=null; try { off=sessionStorage.getItem('bn-plx-off'); } catch(e){}
+    if (off) { motivo = off + ' — mantido estático nesta visita'; document.body.classList.add('leve'); status(); return; }
+    const s = sinais(); if (!s.ok) { motivo=s.msg; if (s.leve) document.body.classList.add('leve'); status(); return; }
+    motivo = s.msg + ' · testando desempenho…'; status();
+    teste(s.parcial ? 18 : 24, (ok,p90)=>{
+      if (ok) ligar(`${s.msg} · teste OK (90% dos quadros em até ${p90} ms)`);
+      else { motivo = `${s.msg} · teste reprovado (${p90} ms por quadro)`; document.body.classList.add('leve'); status(); }
+    });
+  }
+  return { layout, ativo, voo, residuo, quadro, fimDeAnimacao, caminhoPronto, preCarregar, avaliar, desligar, status };
+})();
+window.PLX = PLX;
+
+
+/* ==========================================================================
+   NAVE — o disco da logo cruza o céu de vez em quando
+   · Passagem: atravessa a tela em 0,4–0,9s com cauda de estrela cadente.
+   · Visita: chega rápido a um ponto livre, flutua e depois sai (pela borda,
+     afundando no espaço ou vindo em direção à tela).
+   · No Hero quem sai é o próprio disco da logo (primeira vez após 60s no Hero).
+   · Só com o fundo da galáxia à vista; nunca nas páginas, na intro, durante um
+     voo, com a aba escondida ou com os efeitos desligados.
+   ========================================================================== */
+const NAVE = (()=>{
+  const rapido = new URLSearchParams(location.search).get('nave')==='rapido';   // teste: intervalos 10× menores
+  const CROP = {x:.25374, y:.21797, w:.48003, h:.22463};                         // onde está o disco dentro da imagem da camada
+  const ASP = 270/577;
+  const camada = document.createElement('div'); camada.className = 'naves'; camada.setAttribute('aria-hidden','true');
+  sombrasEl.after(camada);
+  const el = document.createElement('div'); el.className = 'nave';
+  el.innerHTML = '<div class="nave__cauda"></div><div class="nave__corpo"><div class="nave__balanco"><div class="nave__brilho"></div><img alt="" draggable="false"></div></div>';
+  camada.appendChild(el);
+  const img = el.querySelector('img'), cauda = el.querySelector('.nave__cauda'), corpo = el.querySelector('.nave__corpo');
+  const disco = camadas[2];
+  let estado = 'espera', evento = null, acum = 0, alvo = 0, heroAcum = 0, heroLiberado = false, tAnt = performance.now();
+  let flutuaRest = 0, fimFlutuar = null, base = 40, anims = [], fuga = null;
+  alvo = sortear();
+
+  function sortear(){                                            // 5–50s, concentrado em torno de 30s (≈80% entre 20 e 40s)
+    const a = cfg.naveMin, b = Math.max(cfg.naveMax, a+1), m = Math.min(Math.max(cfg.naveMedia, a), b), sd = (b-a)/5.6; let v, n=0;
+    do { const u = 1-Math.random(), w = Math.random(); v = m + sd*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*w); } while ((v<a || v>b) && ++n<50);
+    v = Math.min(b, Math.max(a, v)); return rapido ? v/10 : v;
+  }
+  const rnd = (a,b) => a + Math.random()*(b-a);
+  const lado = () => Math.max(W,H);
+  const tamanho = () => Math.max(12, lado()*rnd(cfg.naveTamMin, cfg.naveTamMax)/100);   // % do lado maior da tela
+  const mundo = (sx,sy) => ({x: cam.x + (sx - W/2)/cam.s, y: cam.y + (sy - H/2)/cam.s});
+  function kf(x, y, k, op=1, extra={}){ const p = mundo(x,y), w = base/cam.s, h = w*ASP;
+    return {transform:`translate(${p.x - w/2}px, ${p.y - h/2}px) scale(${k})`, opacity:op, ...extra}; }
+  function preparar(largura, grande){
+    base = largura; const src = grande || largura > 150 ? 'assets/nave.webp' : 'assets/nave-192.webp';
+    if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+    el.style.width = (base/cam.s)+'px'; el.style.height = (base*ASP/cam.s)+'px';
+    return img.decode().catch(()=>{});
+  }
+  function direcao(dx, dy){
+    cauda.style.setProperty('--ang', (Math.atan2(dy,dx)*180/Math.PI) + 'deg');
+    img.style.transform = `rotate(${Math.max(-12, Math.min(12, dx/Math.hypot(dx,dy||1e-6)*10))}deg)`;
+  }
+  const vivo = ev => { if (ev !== evento) throw 'abortado'; };
+  function pairar(k){                                            // flutuação ao ficar parada: amplitude pelo tamanho na tela
+    const altura = base*ASP*k, amp = Math.max(2.5, Math.min(12, altura*.35));
+    el.style.setProperty('--amp', (amp/k)+'px'); corpo.classList.add('flutua');
+  }
+  async function mover(ev, frames, dur, easing){ vivo(ev); const a = el.animate(frames, {duration:dur, easing, fill:'forwards'}); anims.push(a); await a.finished.catch(()=>{}); vivo(ev); }
+  function rastro(on, dur, delay=0){ const a = cauda.animate([{opacity:getComputedStyle(cauda).opacity},{opacity:on?1:0}], {duration:dur, delay, fill:'forwards'}); anims.push(a); }
+  function esperar(ev, seg){ vivo(ev); flutuaRest = seg; return new Promise(r=>{ fimFlutuar = r; }).then(()=>vivo(ev)); }
+
+  function obstaculos(){
+    const sel = ['.region.is-active .region__texto','.region.is-active .planeta','.region.is-active .logo','.region.is-active .hero-legenda','#painel .commands','#menuBtn','.hud','.topo-acoes','#kupim-badge-wrap'];
+    return sel.flatMap(q=>[...document.querySelectorAll(q)]).map(e=>e.getBoundingClientRect()).filter(r=>r.width && r.height);
+  }
+  function pontoLivre(w){
+    const h = w*ASP, m = 28, obs = obstaculos();
+    for (let i=0;i<50;i++){
+      const x = rnd(m + w, W - m - w), y = rnd(m + h + 50, H - m - h - 90);
+      const bate = obs.some(r => x + w/2 + m > r.left && x - w/2 - m < r.right && y + h/2 + m > r.top && y - h/2 - m < r.bottom);
+      if (!bate) return {x, y};
+    }
+    return null;
+  }
+  function discoRect(){
+    const im = disco && disco.firstElementChild; if (!im || $('#logo').classList.contains('pre')) return null;
+    const r = im.getBoundingClientRect(); if (!r.width) return null;
+    return {x: r.left + r.width*(CROP.x + CROP.w/2), y: r.top + r.height*(CROP.y + CROP.h/2), w: r.width*CROP.w};
+  }
+  const longe = () => Math.hypot(W,H)*.85;
+  function vetor(){ const a = (Math.floor(Math.random()*8)*45 + rnd(-10,10)) * Math.PI/180; return {dx:Math.cos(a), dy:Math.sin(a)}; }
+
+  /* --- passagem rápida --- */
+  async function passagem(ev){
+    const w = tamanho(); await preparar(w, false); vivo(ev);
+    const {dx, dy} = vetor(), P = {x: W*rnd(.2,.8), y: H*rnd(.2,.8)}, D = longe() + w*6;
+    const doFundo = Math.random() < .2;                           // às vezes nasce lá no fundo, já dentro da tela
+    const A = doFundo ? P : {x:P.x - dx*D, y:P.y - dy*D}, B = {x:P.x + dx*D, y:P.y + dy*D};
+    const k0 = rnd(.6,1.2), k1 = rnd(.6,1.5), dur = rnd(400,900);
+    direcao(dx, dy); rastro(true, doFundo ? dur*.35 : 80);
+    await mover(ev, doFundo
+      ? [kf(A.x,A.y,.05,0), kf(A.x+dx*D*.1, A.y+dy*D*.1, .35, 1, {offset:.18}), kf(B.x,B.y,k1)]
+      : [kf(A.x,A.y,k0), kf(B.x,B.y,k1)], dur, doFundo ? 'cubic-bezier(.55,0,1,.45)' : 'linear');
+  }
+
+  /* --- saídas da visita --- */
+  async function sair(ev, T, w){
+    const tipo = Math.random(), {dx, dy} = vetor();
+    if (tipo < .5) {                                              // dispara pela borda
+      const B = {x:T.x + dx*(longe()+w*6), y:T.y + dy*(longe()+w*6)};
+      direcao(dx, dy); rastro(true, 120);
+      await mover(ev, [kf(T.x,T.y,1), kf(B.x,B.y,rnd(.7,1.4))], rnd(420,600), 'cubic-bezier(.55,0,1,.45)');
+    } else if (tipo < .8) {                                       // afunda no espaço até sumir
+      direcao(dx, dy); rastro(true, 200); rastro(false, 300, 300);
+      await mover(ev, [kf(T.x,T.y,1), kf(T.x+dx*w*3, T.y+dy*w*3, .03, 0)], 700, 'cubic-bezier(.5,0,.9,.5)');
+    } else {                                                      // vem em direção à tela e passa pela "câmera"
+      await preparar(w, true); vivo(ev);
+      const k = lado()*.7 / w;
+      await mover(ev, [kf(T.x,T.y,1), kf(W/2 + (T.x-W/2)*.4, H/2 + (T.y-H/2)*.4, k*.7, 1, {offset:.82}), kf(W/2 + (T.x-W/2)*.3, H/2 + (T.y-H/2)*.3, k, 0)], 380, 'cubic-bezier(.6,0,1,.6)');
+    }
+  }
+
+  /* --- visita: chega, flutua, sai --- */
+  async function visita(ev){
+    const w = tamanho(), T = pontoLivre(w); if (!T) return passagem(ev);
+    await preparar(w, false); vivo(ev);
+    let A, k0 = rnd(.7,1.3);
+    if (Math.random() < .7) { const {dx, dy} = vetor(); A = {x:T.x - dx*longe(), y:T.y - dy*longe()}; direcao(dx, dy); rastro(true, 80); rastro(false, 260, 380); }
+    else { A = T; k0 = .04; direcao(1, 0); }                      // surge do fundo
+    await mover(ev, [kf(A.x,A.y,k0, A===T?0:1), kf(T.x,T.y,1)], rnd(520,700), 'cubic-bezier(.16,1,.3,1)');
+    pairar(1);
+    let P = T, resto = sortear();
+    for (;;) {
+      fuga = null; await esperar(ev, resto); corpo.classList.remove('flutua');
+      if (!fuga) { await sair(ev, P, w); return; }                 // tempo acabou: sai normalmente
+      const B = await fugir(ev, P, w, 1); if (!B) return;          // fugiu do mouse e foi embora
+      P = B; resto = fuga.resto; pairar(1);                         // só desviou: volta a flutuar no novo ponto
+    }
+  }
+
+  /* --- fuga: o mouse chegou perto da nave parada --- */
+  const limita = (v, a, b) => Math.min(b, Math.max(a, v));
+  async function fugir(ev, T, w, k){
+    const modo = cfg.naveFoge==='aleatorio' ? ['dispara','afunda','desvia'][Math.floor(Math.random()*3)] : cfg.naveFoge;
+    let dx = T.x - fuga.x + rnd(-.25,.25)*w, dy = T.y - fuga.y + rnd(-.25,.25)*w; const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
+    direcao(dx, dy);
+    if (modo==='desvia') {                                         // pula para perto, fugindo do cursor, e segue flutuando
+      const h = w*ASP, m = 16, obs = obstaculos(), base0 = Math.atan2(dy, dx);
+      const livre = P => !obs.some(r => P.x + w/2 + m > r.left && P.x - w/2 - m < r.right && P.y + h/2 + m > r.top && P.y - h/2 - m < r.bottom);
+      let B = null;
+      for (let i = 0; i < 24 && !B; i++) {                         // salto curto, para longe do cursor, num lugar livre
+        const a = base0 + rnd(-1, 1) * Math.min(1.2, .3 + i*.05), d = w * rnd(6, 10);
+        const C = {x: limita(T.x + Math.cos(a)*d, w*2, W - w*2), y: limita(T.y + Math.sin(a)*d, w*2 + 50, H - w*2 - 90)};
+        if (livre(C)) B = C;
+      }
+      if (!B) B = pontoLivre(w) || {x: limita(T.x + dx*w*7, w*2, W - w*2), y: limita(T.y + dy*w*7, w*2 + 50, H - w*2 - 90)};
+      direcao(B.x - T.x, B.y - T.y);
+      rastro(true, 60); rastro(false, 240, 140);
+      await mover(ev, [kf(T.x,T.y,k), kf(B.x,B.y,k)], 340, 'cubic-bezier(.16,1,.3,1)');
+      return B;
+    }
+    if (modo==='afunda') {                                         // afunda no espaço até sumir
+      rastro(true, 120); rastro(false, 220, 200);
+      await mover(ev, [kf(T.x,T.y,k), kf(T.x + dx*w*3, T.y + dy*w*3, k*.03, 0)], 450, 'cubic-bezier(.5,0,.9,.5)');
+      return null;
+    }
+    const D = longe() + w*6;                                       // dispara para longe, saindo da tela
+    rastro(true, 70);
+    await mover(ev, [kf(T.x,T.y,k), kf(T.x + dx*D, T.y + dy*D, k*1.2)], 300, 'cubic-bezier(.55,0,1,.45)');
+    return null;
+  }
+  addEventListener('pointermove', e=>{                             // com mouse: foge quando o cursor chega perto
+    if (e.pointerType !== 'mouse' || !fimFlutuar || !corpo.classList.contains('flutua')) return;
+    const r = img.getBoundingClientRect(); if (!r.width) return;
+    if (Math.hypot(e.clientX - (r.left + r.width/2), e.clientY - (r.top + r.height/2)) > cfg.naveFogeDist) return;
+    espantar(e.clientX, e.clientY);
+  }, {passive:true});
+  function espantar(x, y){ fuga = {x, y, resto:Math.max(1, flutuaRest)}; corpo.classList.remove('flutua'); const f = fimFlutuar; fimFlutuar = null; f(); }
+  /* No celular: um toque curto na nave ou perto dela (até 56px) também a faz fugir.
+     Arrastar o dedo não conta (continua sendo o gesto de trocar de setor); toque em planeta ou botão também não. */
+  let toque = null;
+  addEventListener('pointerdown', e=>{ toque = e.pointerType==='mouse' ? null : {x:e.clientX, y:e.clientY, t:performance.now()}; }, {passive:true});
+  addEventListener('pointerup', e=>{
+    const t = toque; toque = null;
+    if (!t || e.pointerType==='mouse' || !fimFlutuar || !corpo.classList.contains('flutua')) return;
+    if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 12 || performance.now() - t.t > 600) return;
+    if (e.target.closest && e.target.closest('a, button, input, select, textarea, .planeta')) return;
+    const r = img.getBoundingClientRect(); if (!r.width) return;
+    if (Math.hypot(e.clientX - (r.left + r.width/2), e.clientY - (r.top + r.height/2)) > 56) return;
+    try { navigator.vibrate && navigator.vibrate(12); } catch(err){}       // resposta tátil curta (Android; o iPhone não permite)
+    espantar(e.clientX, e.clientY);
+  }, {passive:true});
+
+  /* --- Hero: o disco sai da logo e depois volta para o lugar --- */
+  async function eventoHero(ev){
+    const r0 = discoRect(); if (!r0) return;
+    await preparar(r0.w, true); vivo(ev);
+    camada.classList.add('frente');
+    const r = discoRect() || r0;
+    el.animate([kf(r.x, r.y, 1)], {fill:'forwards', duration:0}); disco.classList.add('fora');   // troca invisível
+    const w = tamanho(), kS = w / r.w, lift = {x:r.x, y:r.y - r.w*.12};
+    await mover(ev, [kf(r.x,r.y,1), kf(lift.x,lift.y,1.04)], 260, 'cubic-bezier(.23,1,.32,1)');   // decola
+    const visitar = Math.random() < cfg.naveVisita, T = visitar ? pontoLivre(w) : null;
+    let volta;
+    if (T) {
+      direcao(T.x-lift.x, T.y-lift.y); rastro(true, 120, 260); rastro(false, 220, 520);
+      await mover(ev, [kf(lift.x,lift.y,1.04), kf(T.x,T.y,kS)], 700, 'cubic-bezier(.45,0,.2,1)');
+      pairar(kS);
+      let P = T, resto = sortear(), saiu = false;
+      for (;;) {
+        fuga = null; await esperar(ev, resto); corpo.classList.remove('flutua');
+        if (!fuga) break;
+        const B = await fugir(ev, P, w, kS); if (!B) { saiu = true; break; }
+        P = B; resto = fuga.resto; pairar(kS);
+      }
+      if (saiu) {                                                   // fugiu do mouse: some um pouco e volta para a logo por outro lado
+        el.animate([{opacity:0}], {fill:'forwards', duration:0}); rastro(false, 1);
+        await esperar(ev, rnd(.8,2.5));
+        const v = vetor(); volta = {x:r.x - v.dx*longe(), y:r.y - v.dy*longe(), k:kS*1.2};
+      } else volta = {x:P.x, y:P.y, k:kS};
+    } else {
+      const {dx, dy} = vetor(), B = {x:lift.x + dx*(longe()+w*6), y:lift.y + dy*(longe()+w*6)}, dur = rnd(650,900);
+      direcao(dx, dy); rastro(true, 120, dur*.32);                  // a cauda só aparece depois que a nave já encolheu
+      await mover(ev, [kf(lift.x,lift.y,1.04), kf(lift.x + dx*r.w*.6, lift.y + dy*r.w*.6, kS*2.2, 1, {offset:.3}), kf(B.x,B.y,kS)], dur, 'cubic-bezier(.5,0,.85,.5)');
+      el.animate([{opacity:0}], {fill:'forwards', duration:0}); rastro(false, 1);
+      await esperar(ev, rnd(.8,2.5));
+      const v = vetor(); volta = {x:r.x - v.dx*longe(), y:r.y - v.dy*longe(), k:kS*1.2};
+    }
+    const d = discoRect() || r;                                   // volta para o lugar exato na logo
+    direcao(d.x-volta.x, d.y-volta.y); rastro(true, 80); rastro(false, 200, 180);   // a cauda some antes de a nave crescer
+    await mover(ev, [kf(volta.x,volta.y,volta.k), kf(d.x, d.y - d.w*.05, 1.03, 1, {offset:.82}), kf(d.x, d.y, 1)], 950, 'cubic-bezier(.16,1,.3,1)');
+  }
+
+  function limpar(suave){
+    anims.forEach(a=>a.cancel()); anims = []; el.getAnimations().forEach(a=>a.cancel());
+    corpo.classList.remove('flutua'); camada.classList.remove('frente');
+    if (disco.classList.contains('fora')) { disco.classList.remove('fora'); if (suave) disco.animate([{opacity:0},{opacity:1}], {duration:220}); }
+    if (fimFlutuar) { const f = fimFlutuar; fimFlutuar = null; f(); }
+    evento = null; estado = 'espera'; fuga = null;
+  }
+  async function disparar(hero, modo){
+    limpar(false);
+    const ev = evento = {hero, setor:atual}; estado = 'ativo'; acum = 0; alvo = sortear();
+    try {
+      if (hero) { heroLiberado = true; await eventoHero(ev); }
+      else if (modo==='visita' || (!modo && Math.random() < cfg.naveVisita)) await visita(ev);
+      else await passagem(ev);
+    } catch(e) { if (e !== 'abortado') console.warn(e); }
+    if (evento === ev) limpar(false);
+  }
+  const intro = () => document.documentElement.classList.contains('has-intro');
+  const podeAgora = () => !efeitosReduzidos() && !document.hidden && !paginaAberta && !intro() && !mapaAberto && !menuAberto && Math.abs(cam.s-1) < .02;
+
+  setInterval(()=>{
+    const now = performance.now(), dt = Math.min(1, (now - tAnt)/1000); tAnt = now;
+    if (efeitosReduzidos()) { if (evento) limpar(true); return; }
+    if (evento) {
+      if (evento.setor !== atual) { if (evento.hero || !voo) limpar(true); return; }   // saiu do setor: some (no Hero, o disco volta à logo)
+      if (fimFlutuar && podeAgora() && !voo) { flutuaRest -= dt; if (flutuaRest <= 0) { const f = fimFlutuar; fimFlutuar = null; f(); } }
+      return;
+    }
+    if (!podeAgora() || voo) return;
+    const hero = atual === 'inicio';
+    if (hero) heroAcum += dt;
+    acum += dt;
+    if (acum < alvo) return;
+    if (hero && (!montada || (!heroLiberado && heroAcum < cfg.naveHeroEspera*(rapido?.1:1)))) return;
+    disparar(hero);
+  }, 200);
+
+  return {
+    agora(modo){ if (efeitosReduzidos() || paginaAberta) return; const hero = atual==='inicio' && modo!=='passagem' && modo!=='visita'; disparar(hero && montada, modo); },
+    estado: () => ({estado, acum:+acum.toFixed(1), alvo:+alvo.toFixed(1), heroAcum:+heroAcum.toFixed(1), heroLiberado, evento: evento && {...evento}}),
+    sortear
+  };
+})();
+window.NAVE = NAVE;
+
+/* ==========================================================================
+   MENU SANDUÍCHE (celular, tablet em pé, celular deitado)
+   ========================================================================== */
+const menuBtn = $('#menuBtn'), menuLista = $('#menuLista'), menuFundo = $('#menuFundo');
+const MENU = [['inicio','inicio','Início'],['eventos','eventos','Eventos'],['sobre','sobre','Sobre'],['membro','membro','Seja membro'],['loja','loja','Loja'],
+  ['avisos','avisos','Avisos'],['videos','videos','Vídeos'],['palestrantes','palestrantes','Palestrantes'],['contato','contato','Contato'],['#mapa','mapa','Mapa do universo']];
+menuLista.innerHTML = MENU.map(([id,ico,nome])=> id==='#mapa'
+    ? `<button class="menu-item" type="button" data-alvo="${id}">${icone(ico)}${nome}</button>`
+    : `<a class="menu-item" href="#/${id==='inicio'?'':id}" data-alvo="${id}">${icone(ico)}${nome}</a>`).join('');
+let menuAberto = false;
+function abrirMenu(){
+  menuAberto = true; menuBtn.setAttribute('aria-expanded','true'); menuLista.classList.add('aberta'); menuFundo.classList.add('aberto');
+  (menuLista.querySelector('[aria-current="true"]') || menuLista.firstElementChild).focus();
+}
+function fecharMenu(foco=true){
+  if (!menuAberto) return;
+  menuAberto = false; menuBtn.setAttribute('aria-expanded','false'); menuLista.classList.remove('aberta'); menuFundo.classList.remove('aberto');
+  if (foco) menuBtn.focus();
+}
+menuBtn.onclick = () => menuAberto ? fecharMenu() : abrirMenu();
+menuFundo.onclick = () => fecharMenu();
+menuLista.addEventListener('click', e=>{
+  const b = e.target.closest('.menu-item'); if (!b || e.ctrlKey || e.metaKey) return;
+  e.preventDefault();
+  fecharMenu(false);
+  const alvo = b.dataset.alvo;
+  setTimeout(()=>{                                               // o menu fecha primeiro; depois a câmera voa
+    if (alvo==='#mapa') { if (paginaAberta) { fecharPaginaPeloUsuario(); setTimeout(abreMapa, cfg.dur*1000); } else if (!mapaAberto) abreMapa(); }
+    else navegar(alvo);
+  }, movReduzido() ? 0 : 200);
+});
+
+/* ==========================================================================
+   INICIALIZAÇÃO
+   ========================================================================== */
+if (lerRota().reg==='inicio' && !lerRota().pag && !movReduzido()) document.body.classList.add('pre-painel');
+medir(); aplicar(1.5*W, 1.5*H, 1);
+addEventListener('resize', ()=>{ medir(); const c=centro(regiao(atual)); aplicar(mapaAberto?1.5*W:c.x, mapaAberto?1.5*H:c.y, mapaAberto?1/3:1); PLX.layout(); });
+rotaMudou();
+aplicaMovimento(); PLX.status();
+document.addEventListener('bn:intro-end', ()=>setTimeout(PLX.avaliar, 2600), {once:true});
+document.addEventListener('bn:intro-end', ()=>{ if (atual==='inicio') montarLogo(); else { $('#logo').classList.remove('pre'); montada = true; document.body.classList.remove('pre-painel'); } }, {once:true});
+
+/* ---- Intro (igual ao intro-demo.html) ---- */
+(function(){
+  const html = document.documentElement, intro = $('#intro'), app = $('#app');
+  const fimIntro = () => document.dispatchEvent(new CustomEvent('bn:intro-end'));
+  if (!html.classList.contains('has-intro')) { intro.remove(); setTimeout(fimIntro, 120); return; }
+  const video = $('#introVideo'), skip = $('#introSkip'), fontes = video.querySelectorAll('source');
+  let acabou=false, comecou=false, cao, limite;
+  app.inert = true;
+  function finish(fast){
+    if (acabou) return; acabou = true; clearTimeout(cao); clearTimeout(limite);
+    try { sessionStorage.setItem('bn-intro-vista','1'); } catch(e){}
+    intro.style.setProperty('--intro-fade', fast?'.6s':'1.4s'); intro.classList.add('is-white');
+    setTimeout(()=>{ intro.classList.add('is-leaving'); html.classList.remove('has-intro'); app.inert = false; fimIntro();
+      setTimeout(()=>{ video.pause(); intro.remove(); }, fast?700:1500); }, 280);
+  }
+  video.addEventListener('ended', ()=>finish());
+  const prog = $('#introProg');
+  video.addEventListener('timeupdate', ()=>{ if (video.duration) prog.style.transform = `scaleX(${Math.min(1, video.currentTime/video.duration)})`;
+    if (video.duration && video.currentTime >= video.duration-.12) finish(); });
+  fontes[fontes.length-1].addEventListener('error', ()=>finish(true));
+  video.addEventListener('error', ()=>finish(true));
+  video.addEventListener('playing', ()=>{ comecou=true; clearTimeout(cao); });
+  video.addEventListener('waiting', ()=>{ clearTimeout(cao); cao=setTimeout(()=>finish(true),2500); });
+  setTimeout(()=>{ intro.classList.add('can-skip'); skip.tabIndex=0; }, 1200);
+  skip.addEventListener('click', e=>{ e.stopPropagation(); finish(true); });
+  /* Pular tocando/clicando em qualquer parte do vídeo (a partir do mesmo instante em que o botão aparece).
+     No toque, arrastar o dedo não pula: só um toque curto. */
+  let ini = null;
+  intro.addEventListener('pointerdown', e=>{ ini = {x:e.clientX, y:e.clientY}; });
+  intro.addEventListener('pointerup', e=>{
+    if (!ini || !intro.classList.contains('can-skip')) { ini = null; return; }
+    const mov = Math.hypot(e.clientX-ini.x, e.clientY-ini.y); ini = null;
+    if (mov < 12 && !e.target.closest('.intro__skip')) finish(true);
+  });
+  addEventListener('keydown', e=>{
+    if (acabou) return;
+    if (e.key==='Escape' || ((e.key==='Enter' || e.key===' ') && intro.classList.contains('can-skip') && document.activeElement!==skip)) { e.preventDefault(); finish(true); }
+  });
+  function start(){ const p=video.play(); if (p&&p.catch) p.catch(()=>finish(true));
+    cao=setTimeout(()=>{ if(!comecou) finish(true); },3000); limite=setTimeout(()=>finish(),15000); }
+  if (document.hidden) document.addEventListener('visibilitychange', function f(){ if(!document.hidden){ document.removeEventListener('visibilitychange',f); start(); } });
+  else start();
+})();
+</script>
+
+<!-- ============ SELO KUPIM DIGITAL ============ -->
+<div id="kupim-badge-wrap">
+  <a id="kupim-badge" href="https://www.kupimdigital.com.br/" target="_blank" rel="noopener" aria-label="Uma criação de Kupim Digital. Abre o site da Kupim Digital.">
+    <span class="k-logo-spacer" aria-hidden="true"></span>
+    <span class="badge-text">© <span class="kupim-year">2026</span> <b translate="no">BRAUFONET</b>. Todos os direitos reservados.<br>Uma criação de <b>Kupim Digital</b>.</span>
+  </a>
+  <span class="k-logo-wrap" aria-hidden="true">
+    <svg viewBox="0 0 80.339996 68.730003" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="k-fill-gradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#eff3f8"/><stop offset="100%" stop-color="#eff3f8"/></linearGradient></defs>
+      <path d="m 13.66,16.47 c 7.19,-0.43 14.44,-0.34 21.63,-0.04 -0.24,8.15 0,16.3 -0.14,24.45 C 44.4,32.62 53.53,24.22 62.99,16.19 71.94,16.35 80.9,16.03 89.85,16.38 83.67,21.31 78.35,27.2 72.22,32.19 68.1,35.71 64.48,39.82 60.09,43 71.83,56.41 82.59,70.68 93.98,84.4 91.4,85.16 88.68,84.79 86.03,84.85 79.75,84.76 73.47,85.02 67.2,84.71 59.87,75.36 52.54,66.01 44.97,56.86 c -3.63,2.59 -6.28,6.29 -9.84,9 0.14,6.27 -0.03,12.54 0.12,18.81 -7.19,0.24 -14.43,0.42 -21.61,-0.1 0.34,-22.69 0.3,-45.41 0.02,-68.1 z" transform="translate(-13.640002,-16.175853)" fill="url(#k-fill-gradient)"/>
+    </svg>
+  </span>
+</div>
+<script>
+(function(){
+  var wrap = document.getElementById('kupim-badge-wrap'), badge = document.getElementById('kupim-badge');
+  document.querySelectorAll('.kupim-year').forEach(function(el){ el.textContent = new Date().getFullYear(); });
+  function updateShift(){ wrap.style.setProperty('--k-shift', Math.max(badge.scrollWidth - 44, 0) + 'px'); }
+  updateShift(); addEventListener('load', updateShift); addEventListener('resize', updateShift);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateShift);
+  requestAnimationFrame(function(){ requestAnimationFrame(updateShift); });
+  new MutationObserver(function(){ if (!document.body.classList.contains('no-inicio')) wrap.classList.remove('is-open'); }).observe(document.body, {attributes:true, attributeFilter:['class']});
+  if (!matchMedia('(hover: none)').matches) return;            // toque: 1º toque abre, 2º toque segue o link
+  badge.addEventListener('click', function(e){
+    if (wrap.classList.contains('is-open')) return;
+    e.preventDefault(); wrap.classList.add('is-open');
+    document.addEventListener('click', function fechar(ev){ if (!wrap.contains(ev.target)) { wrap.classList.remove('is-open'); document.removeEventListener('click', fechar); } });
+  });
+})();
+</script>
+<!-- ============ FIM DO SELO ============ -->
+</body>
+</html>
